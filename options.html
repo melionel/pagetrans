@@ -221,6 +221,32 @@
         </div>
       </div>
     </div>
+
+    <div class="toggle-section">
+      <div class="toggle-header" data-section="azure">
+        <span>Azure OpenAI</span>
+        <span class="arrow" id="azure-arrow">▶</span>
+      </div>
+      <div class="toggle-content hidden" id="azure-content">
+        <div class="form-group">
+          <label for="azureApiKey">API Key:</label>
+          <input type="password" id="azureApiKey" placeholder="Your Azure API key">
+          <div class="help-text">Create a key in the Azure portal</div>
+        </div>
+        <div class="form-group">
+          <label for="azureEndpoint">Endpoint URL:</label>
+          <input type="url" id="azureEndpoint" placeholder="https://your-resource.openai.azure.com">
+        </div>
+        <div class="form-group">
+          <label for="azureDeployment">Deployment Name:</label>
+          <input type="text" id="azureDeployment" placeholder="deployment-name">
+        </div>
+        <div class="form-group">
+          <label for="azureApiVersion">API Version:</label>
+          <input type="text" id="azureApiVersion" value="2024-02-15-preview">
+        </div>
+      </div>
+    </div>
     
     <div class="toggle-section">
       <div class="toggle-header" data-section="anthropic">
@@ -314,6 +340,7 @@
       <label for="defaultLlm">Default LLM Service:</label>
       <select id="defaultLlm">
         <option value="openai">OpenAI GPT</option>
+        <option value="azure">Azure OpenAI</option>
         <option value="anthropic">Anthropic Claude</option>
         <option value="google">Google Gemini</option>
         <option value="custom">Custom API</option>

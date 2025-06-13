@@ -52,6 +52,9 @@ async function handleTranslate() {
   // Check if API key is configured
   const keys = await chrome.storage.sync.get([
     'openaiApiKey',
+    'azureApiKey',
+    'azureEndpoint',
+    'azureDeployment',
     'anthropicApiKey',
     'googleApiKey',
     'customApiKey',
@@ -62,6 +65,9 @@ async function handleTranslate() {
   switch (llmService) {
     case 'openai':
       apiKey = keys.openaiApiKey;
+      break;
+    case 'azure':
+      apiKey = keys.azureApiKey;
       break;
     case 'anthropic':
       apiKey = keys.anthropicApiKey;
@@ -79,6 +85,11 @@ async function handleTranslate() {
     return;
   }
 
+  if (llmService === 'azure' && (!apiKey || !keys.azureEndpoint || !keys.azureDeployment)) {
+    showStatus('Please configure your Azure endpoint, deployment, and key first', 'error');
+    return;
+  }
+
   if (llmService !== 'custom' && !apiKey) {
     showStatus('Please configure your API key in settings first', 'error');
     return;
@@ -91,10 +102,32 @@ async function handleTranslate() {
   try {
     // Get current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+
+    // Ensure we have a valid tab with an allowed scheme
+    if (!tab || /^\s*$/.test(tab.url) ||
+        tab.url.startsWith('chrome://') ||
+        tab.url.startsWith('chrome-extension://')) {
+      showStatus('Cannot translate this page.', 'error');
+      return;
+    }
+
     // Save settings first
     await saveSettings();
-    
+
+    // Inject content script in case it didn't load automatically
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+      await chrome.scripting.insertCSS({
+        target: { tabId: tab.id },
+        files: ['content.css']
+      });
+    } catch (e) {
+      // Ignore errors (script may already be injected)
+    }
+
     // Send message to content script to start translation
     const response = await chrome.tabs.sendMessage(tab.id, {
       action: 'translatePage',
