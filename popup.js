@@ -52,6 +52,9 @@ async function handleTranslate() {
   // Check if API key is configured
   const keys = await chrome.storage.sync.get([
     'openaiApiKey',
+    'azureApiKey',
+    'azureEndpoint',
+    'azureDeployment',
     'anthropicApiKey',
     'googleApiKey',
     'customApiKey',
@@ -62,6 +65,9 @@ async function handleTranslate() {
   switch (llmService) {
     case 'openai':
       apiKey = keys.openaiApiKey;
+      break;
+    case 'azure':
+      apiKey = keys.azureApiKey;
       break;
     case 'anthropic':
       apiKey = keys.anthropicApiKey;
@@ -76,6 +82,11 @@ async function handleTranslate() {
 
   if (llmService === 'custom' && (!apiKey || !keys.customApiUrl)) {
     showStatus('Please configure your custom API URL and key in settings first', 'error');
+    return;
+  }
+
+  if (llmService === 'azure' && (!apiKey || !keys.azureEndpoint || !keys.azureDeployment)) {
+    showStatus('Please configure your Azure endpoint, deployment, and key first', 'error');
     return;
   }
 

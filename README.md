@@ -4,7 +4,7 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 
 ## Features
 
-- **Multiple LLM Support**: OpenAI GPT, Anthropic Claude, Google Gemini, and Custom APIs
+- **Multiple LLM Support**: OpenAI GPT, Azure OpenAI, Anthropic Claude, Google Gemini, and Custom APIs
 - **In-place Translation**: Replaces text directly on the page while maintaining layout
 - **Smart Font Sizing**: Automatically adjusts font sizes to preserve visual balance
 - **Language Detection**: Supports 12+ languages including Spanish, French, German, Japanese, Chinese, etc.
@@ -30,6 +30,10 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 ### OpenAI GPT
 - Get API key from [OpenAI Platform](https://platform.openai.com/api-keys)
 - Choose model (GPT-3.5 Turbo recommended for cost/performance)
+
+### Azure OpenAI
+- Get API key and endpoint from the Azure portal
+- Provide your deployment name and API version in settings
 
 ### Anthropic Claude
 - Get API key from [Anthropic Console](https://console.anthropic.com/)
@@ -94,6 +98,7 @@ pagetrans/
 ## API Usage and Costs
 
 - **OpenAI**: Pay per token, GPT-3.5 is cost-effective
+- **Azure OpenAI**: Billed through your Azure subscription
 - **Anthropic**: Pay per token, Claude 3 Sonnet balanced cost/quality
 - **Google**: Free tier available, then pay per use
 - **Custom**: Depends on your API provider

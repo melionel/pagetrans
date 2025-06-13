@@ -17,6 +17,10 @@ async function handleTranslation(request, sendResponse) {
     // Get API configuration
     const settings = await chrome.storage.sync.get([
       'openaiApiKey',
+      'azureApiKey',
+      'azureEndpoint',
+      'azureDeployment',
+      'azureApiVersion',
       'anthropicApiKey',
       'googleApiKey',
       'customApiKey',
@@ -31,6 +35,9 @@ async function handleTranslation(request, sendResponse) {
     switch (llmService) {
       case 'openai':
         apiKey = settings.openaiApiKey;
+        break;
+      case 'azure':
+        apiKey = settings.azureApiKey;
         break;
       case 'anthropic':
         apiKey = settings.anthropicApiKey;
@@ -62,6 +69,9 @@ async function handleTranslation(request, sendResponse) {
     switch (llmService) {
       case 'openai':
         translations = await translateWithOpenAI(texts, targetLanguage, settings);
+        break;
+      case 'azure':
+        translations = await translateWithAzureOpenAI(texts, targetLanguage, settings);
         break;
       case 'anthropic':
         translations = await translateWithAnthropic(texts, targetLanguage, settings);
@@ -122,7 +132,53 @@ async function translateWithOpenAI(texts, targetLanguage, settings) {
   
   const data = await response.json();
   const translatedText = data.choices[0].message.content.trim();
-  
+
+  return parseTranslationResponse(translatedText, texts.length);
+}
+
+async function translateWithAzureOpenAI(texts, targetLanguage, settings) {
+  const apiVersion = settings.azureApiVersion || '2024-02-15-preview';
+  const deployment = settings.azureDeployment;
+  const endpoint = settings.azureEndpoint?.replace(/\/$/, '');
+
+  if (!endpoint || !deployment) {
+    throw new Error('Azure endpoint or deployment not configured');
+  }
+
+  const prompt = createTranslationPrompt(texts, targetLanguage);
+
+  const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'api-key': settings.apiKey
+    },
+    body: JSON.stringify({
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a professional translator. Translate the given texts to the target language while preserving the meaning, tone, and context. Return only the translations in the same order, separated by newlines.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 4000
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Azure API error: ${error.error?.message || response.statusText}`);
+  }
+
+  const data = await response.json();
+  const translatedText = data.choices[0].message.content.trim();
+
   return parseTranslationResponse(translatedText, texts.length);
 }
 

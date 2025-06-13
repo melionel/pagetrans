@@ -9,7 +9,11 @@ async function loadSettings() {
   const settings = await chrome.storage.sync.get([
     'openaiApiKey',
     'openaiModel',
-    'anthropicApiKey', 
+    'azureApiKey',
+    'azureEndpoint',
+    'azureDeployment',
+    'azureApiVersion',
+    'anthropicApiKey',
     'anthropicModel',
     'googleApiKey',
     'googleModel',
@@ -26,6 +30,20 @@ async function loadSettings() {
   }
   if (settings.openaiModel) {
     document.getElementById('openaiModel').value = settings.openaiModel;
+  }
+
+  // Load Azure OpenAI settings
+  if (settings.azureApiKey) {
+    document.getElementById('azureApiKey').value = settings.azureApiKey;
+  }
+  if (settings.azureEndpoint) {
+    document.getElementById('azureEndpoint').value = settings.azureEndpoint;
+  }
+  if (settings.azureDeployment) {
+    document.getElementById('azureDeployment').value = settings.azureDeployment;
+  }
+  if (settings.azureApiVersion) {
+    document.getElementById('azureApiVersion').value = settings.azureApiVersion;
   }
   
   // Load Anthropic settings
@@ -88,6 +106,12 @@ async function saveSettings() {
     // OpenAI
     openaiApiKey: document.getElementById('openaiApiKey').value.trim(),
     openaiModel: document.getElementById('openaiModel').value,
+
+    // Azure OpenAI
+    azureApiKey: document.getElementById('azureApiKey').value.trim(),
+    azureEndpoint: document.getElementById('azureEndpoint').value.trim(),
+    azureDeployment: document.getElementById('azureDeployment').value.trim(),
+    azureApiVersion: document.getElementById('azureApiVersion').value.trim(),
     
     // Anthropic
     anthropicApiKey: document.getElementById('anthropicApiKey').value.trim(),
@@ -112,6 +136,9 @@ async function saveSettings() {
   switch (selectedService) {
     case 'openai':
       settings.apiKey = settings.openaiApiKey;
+      break;
+    case 'azure':
+      settings.apiKey = settings.azureApiKey;
       break;
     case 'anthropic':
       settings.apiKey = settings.anthropicApiKey;
@@ -138,6 +165,10 @@ function resetSettings() {
     // Clear all form fields
     document.getElementById('openaiApiKey').value = '';
     document.getElementById('openaiModel').value = 'gpt-3.5-turbo';
+    document.getElementById('azureApiKey').value = '';
+    document.getElementById('azureEndpoint').value = '';
+    document.getElementById('azureDeployment').value = '';
+    document.getElementById('azureApiVersion').value = '2024-02-15-preview';
     document.getElementById('anthropicApiKey').value = '';
     document.getElementById('anthropicModel').value = 'claude-3-sonnet-20240229';
     document.getElementById('googleApiKey').value = '';
