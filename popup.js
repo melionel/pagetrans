@@ -50,8 +50,36 @@ async function handleTranslate() {
   const llmService = document.getElementById('llmService').value;
   
   // Check if API key is configured
-  const settings = await chrome.storage.sync.get(['apiKey', 'customApiUrl']);
-  if (!settings.apiKey && llmService !== 'custom') {
+  const keys = await chrome.storage.sync.get([
+    'openaiApiKey',
+    'anthropicApiKey',
+    'googleApiKey',
+    'customApiKey',
+    'customApiUrl'
+  ]);
+
+  let apiKey;
+  switch (llmService) {
+    case 'openai':
+      apiKey = keys.openaiApiKey;
+      break;
+    case 'anthropic':
+      apiKey = keys.anthropicApiKey;
+      break;
+    case 'google':
+      apiKey = keys.googleApiKey;
+      break;
+    case 'custom':
+      apiKey = keys.customApiKey;
+      break;
+  }
+
+  if (llmService === 'custom' && (!apiKey || !keys.customApiUrl)) {
+    showStatus('Please configure your custom API URL and key in settings first', 'error');
+    return;
+  }
+
+  if (llmService !== 'custom' && !apiKey) {
     showStatus('Please configure your API key in settings first', 'error');
     return;
   }

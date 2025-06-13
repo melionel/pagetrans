@@ -16,18 +16,39 @@ async function handleTranslation(request, sendResponse) {
     
     // Get API configuration
     const settings = await chrome.storage.sync.get([
-      'apiKey',
+      'openaiApiKey',
+      'anthropicApiKey',
+      'googleApiKey',
+      'customApiKey',
       'customApiUrl',
       'customModel',
       'openaiModel',
       'anthropicModel',
       'googleModel'
     ]);
-    
-    if (!settings.apiKey) {
+
+    let apiKey;
+    switch (llmService) {
+      case 'openai':
+        apiKey = settings.openaiApiKey;
+        break;
+      case 'anthropic':
+        apiKey = settings.anthropicApiKey;
+        break;
+      case 'google':
+        apiKey = settings.googleApiKey;
+        break;
+      case 'custom':
+        apiKey = settings.customApiKey;
+        break;
+    }
+
+    if (!apiKey) {
       sendResponse({ success: false, error: 'API key not configured' });
       return;
     }
+
+    settings.apiKey = apiKey;
     
     // Check cache first
     const cacheKey = `${llmService}-${targetLanguage}-${JSON.stringify(texts)}`;
