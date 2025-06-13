@@ -201,7 +201,7 @@
     <h2>LLM Service Configuration</h2>
     
     <div class="toggle-section">
-      <div class="toggle-header" onclick="toggleSection('openai')">
+      <div class="toggle-header" data-section="openai">
         <span>OpenAI GPT</span>
         <span class="arrow" id="openai-arrow">▶</span>
       </div>
@@ -223,7 +223,7 @@
     </div>
     
     <div class="toggle-section">
-      <div class="toggle-header" onclick="toggleSection('anthropic')">
+      <div class="toggle-header" data-section="anthropic">
         <span>Anthropic Claude</span>
         <span class="arrow" id="anthropic-arrow">▶</span>
       </div>
@@ -245,7 +245,7 @@
     </div>
     
     <div class="toggle-section">
-      <div class="toggle-header" onclick="toggleSection('google')">
+      <div class="toggle-header" data-section="google">
         <span>Google Gemini</span>
         <span class="arrow" id="google-arrow">▶</span>
       </div>
@@ -266,7 +266,7 @@
     </div>
     
     <div class="toggle-section">
-      <div class="toggle-header" onclick="toggleSection('custom')">
+      <div class="toggle-header" data-section="custom">
         <span>Custom API</span>
         <span class="arrow" id="custom-arrow">▶</span>
       </div>
@@ -322,8 +322,8 @@
   </div>
   
   <div class="button-group">
-    <button type="button" class="btn-primary" onclick="saveSettings()">Save Settings</button>
-    <button type="button" class="btn-secondary" onclick="resetSettings()">Reset to Defaults</button>
+    <button type="button" id="saveButton" class="btn-primary">Save Settings</button>
+    <button type="button" id="resetButton" class="btn-secondary">Reset to Defaults</button>
   </div>
   
   <div id="status" class="status" style="display: none;"></div>

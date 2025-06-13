@@ -1,6 +1,9 @@
 // Options page script for Page Translator extension
 
-document.addEventListener('DOMContentLoaded', loadSettings);
+document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  initEventListeners();
+});
 
 async function loadSettings() {
   const settings = await chrome.storage.sync.get([
@@ -58,6 +61,25 @@ async function loadSettings() {
   }
   if (settings.llmService) {
     document.getElementById('defaultLlm').value = settings.llmService;
+  }
+}
+
+function initEventListeners() {
+  document.querySelectorAll('.toggle-header').forEach(header => {
+    const section = header.dataset.section;
+    if (section) {
+      header.addEventListener('click', () => toggleSection(section));
+    }
+  });
+
+  const saveBtn = document.getElementById('saveButton');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveSettings);
+  }
+
+  const resetBtn = document.getElementById('resetButton');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', resetSettings);
   }
 }
 
