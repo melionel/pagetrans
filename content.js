@@ -4,8 +4,13 @@ class PageTranslator {
   constructor() {
     this.originalTexts = new Map();
     this.translatedTexts = new Map();
+    this.parentMap = new Map();
     this.isTranslated = false;
     this.translationInProgress = false;
+    this.showOriginalOnHover = false;
+
+    this.handleMouseEnter = this.handleMouseEnter.bind(this);
+    this.handleMouseLeave = this.handleMouseLeave.bind(this);
   }
 
   async translatePage(targetLanguage, llmService) {
@@ -16,6 +21,9 @@ class PageTranslator {
     this.translationInProgress = true;
 
     try {
+      const { showOriginalOnHover } = await chrome.storage.sync.get('showOriginalOnHover');
+      this.showOriginalOnHover = typeof showOriginalOnHover === 'undefined' ? true : !!showOriginalOnHover;
+
       // Find all text nodes
       const textNodes = this.findTextNodes(document.body);
       
@@ -164,6 +172,15 @@ class PageTranslator {
     
     // Add a subtle indicator that this text was translated
     parent.setAttribute('data-translated', 'true');
+
+    if (this.showOriginalOnHover) {
+      if (!this.parentMap.has(parent)) {
+        this.parentMap.set(parent, []);
+        parent.addEventListener('mouseenter', this.handleMouseEnter);
+        parent.addEventListener('mouseleave', this.handleMouseLeave);
+      }
+      this.parentMap.get(parent).push(textNode);
+    }
   }
 
   revertTranslation() {
@@ -176,23 +193,52 @@ class PageTranslator {
       for (const [node, originalText] of this.originalTexts) {
         if (node.parentElement) {
           node.textContent = originalText;
-          
+
           // Remove font size adjustments
           const parent = node.parentElement;
           parent.style.fontSize = '';
           parent.removeAttribute('data-translated');
+
+          if (this.parentMap.has(parent)) {
+            parent.removeEventListener('mouseenter', this.handleMouseEnter);
+            parent.removeEventListener('mouseleave', this.handleMouseLeave);
+            this.parentMap.delete(parent);
+          }
         }
       }
 
       // Clear stored data
       this.originalTexts.clear();
       this.translatedTexts.clear();
+      this.parentMap.clear();
       this.isTranslated = false;
 
       return { success: true };
     } catch (error) {
       console.error('Revert error:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  handleMouseEnter(event) {
+    const parent = event.currentTarget;
+    const nodes = this.parentMap.get(parent) || [];
+    for (const node of nodes) {
+      const original = this.originalTexts.get(node);
+      if (original) {
+        node.textContent = original;
+      }
+    }
+  }
+
+  handleMouseLeave(event) {
+    const parent = event.currentTarget;
+    const nodes = this.parentMap.get(parent) || [];
+    for (const node of nodes) {
+      const translated = this.translatedTexts.get(node);
+      if (translated) {
+        node.textContent = translated;
+      }
     }
   }
 }

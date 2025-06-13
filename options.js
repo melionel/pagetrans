@@ -21,7 +21,8 @@ async function loadSettings() {
     'customApiKey',
     'customModel',
     'targetLanguage',
-    'llmService'
+    'llmService',
+    'showOriginalOnHover'
   ]);
   
   // Load OpenAI settings
@@ -80,6 +81,11 @@ async function loadSettings() {
   if (settings.llmService) {
     document.getElementById('defaultLlm').value = settings.llmService;
   }
+  if (typeof settings.showOriginalOnHover === 'undefined') {
+    document.getElementById('hoverOriginal').checked = true;
+  } else {
+    document.getElementById('hoverOriginal').checked = !!settings.showOriginalOnHover;
+  }
 }
 
 function initEventListeners() {
@@ -128,7 +134,8 @@ async function saveSettings() {
     
     // Preferences
     targetLanguage: document.getElementById('defaultLanguage').value,
-    llmService: document.getElementById('defaultLlm').value
+    llmService: document.getElementById('defaultLlm').value,
+    showOriginalOnHover: document.getElementById('hoverOriginal').checked
   };
   
   // Set the main API key based on selected service
@@ -178,6 +185,7 @@ function resetSettings() {
     document.getElementById('customModel').value = '';
     document.getElementById('defaultLanguage').value = 'es';
     document.getElementById('defaultLlm').value = 'openai';
+    document.getElementById('hoverOriginal').checked = true;
     
     // Clear storage
     chrome.storage.sync.clear(() => {
