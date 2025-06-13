@@ -102,10 +102,32 @@ async function handleTranslate() {
   try {
     // Get current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+
+    // Ensure we have a valid tab with an allowed scheme
+    if (!tab || /^\s*$/.test(tab.url) ||
+        tab.url.startsWith('chrome://') ||
+        tab.url.startsWith('chrome-extension://')) {
+      showStatus('Cannot translate this page.', 'error');
+      return;
+    }
+
     // Save settings first
     await saveSettings();
-    
+
+    // Inject content script in case it didn't load automatically
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+      await chrome.scripting.insertCSS({
+        target: { tabId: tab.id },
+        files: ['content.css']
+      });
+    } catch (e) {
+      // Ignore errors (script may already be injected)
+    }
+
     // Send message to content script to start translation
     const response = await chrome.tabs.sendMessage(tab.id, {
       action: 'translatePage',
