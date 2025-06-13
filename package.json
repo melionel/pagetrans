@@ -1,0 +1,33 @@
+{
+  "name": "page-translator-extension",
+  "version": "1.0.0",
+  "description": "Browser extension for translating web pages using configurable LLM services",
+  "keywords": [
+    "browser-extension",
+    "translation",
+    "llm",
+    "openai",
+    "anthropic", 
+    "google-gemini",
+    "chrome-extension",
+    "edge-extension"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/page-translator-extension.git"
+  },
+  "scripts": {
+    "build": "echo 'No build step required - extension files are ready to use'",
+    "package": "node scripts/package.js",
+    "lint": "eslint *.js",
+    "test": "echo 'No tests configured yet'"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

@@ -1,0 +1,162 @@
+// Options page script for Page Translator extension
+
+document.addEventListener('DOMContentLoaded', loadSettings);
+
+async function loadSettings() {
+  const settings = await chrome.storage.sync.get([
+    'openaiApiKey',
+    'openaiModel',
+    'anthropicApiKey', 
+    'anthropicModel',
+    'googleApiKey',
+    'googleModel',
+    'customApiUrl',
+    'customApiKey',
+    'customModel',
+    'targetLanguage',
+    'llmService'
+  ]);
+  
+  // Load OpenAI settings
+  if (settings.openaiApiKey) {
+    document.getElementById('openaiApiKey').value = settings.openaiApiKey;
+  }
+  if (settings.openaiModel) {
+    document.getElementById('openaiModel').value = settings.openaiModel;
+  }
+  
+  // Load Anthropic settings
+  if (settings.anthropicApiKey) {
+    document.getElementById('anthropicApiKey').value = settings.anthropicApiKey;
+  }
+  if (settings.anthropicModel) {
+    document.getElementById('anthropicModel').value = settings.anthropicModel;
+  }
+  
+  // Load Google settings
+  if (settings.googleApiKey) {
+    document.getElementById('googleApiKey').value = settings.googleApiKey;
+  }
+  if (settings.googleModel) {
+    document.getElementById('googleModel').value = settings.googleModel;
+  }
+  
+  // Load Custom API settings
+  if (settings.customApiUrl) {
+    document.getElementById('customApiUrl').value = settings.customApiUrl;
+  }
+  if (settings.customApiKey) {
+    document.getElementById('customApiKey').value = settings.customApiKey;
+  }
+  if (settings.customModel) {
+    document.getElementById('customModel').value = settings.customModel;
+  }
+  
+  // Load preferences
+  if (settings.targetLanguage) {
+    document.getElementById('defaultLanguage').value = settings.targetLanguage;
+  }
+  if (settings.llmService) {
+    document.getElementById('defaultLlm').value = settings.llmService;
+  }
+}
+
+async function saveSettings() {
+  const settings = {
+    // OpenAI
+    openaiApiKey: document.getElementById('openaiApiKey').value.trim(),
+    openaiModel: document.getElementById('openaiModel').value,
+    
+    // Anthropic
+    anthropicApiKey: document.getElementById('anthropicApiKey').value.trim(),
+    anthropicModel: document.getElementById('anthropicModel').value,
+    
+    // Google
+    googleApiKey: document.getElementById('googleApiKey').value.trim(),
+    googleModel: document.getElementById('googleModel').value,
+    
+    // Custom API
+    customApiUrl: document.getElementById('customApiUrl').value.trim(),
+    customApiKey: document.getElementById('customApiKey').value.trim(),
+    customModel: document.getElementById('customModel').value.trim(),
+    
+    // Preferences
+    targetLanguage: document.getElementById('defaultLanguage').value,
+    llmService: document.getElementById('defaultLlm').value
+  };
+  
+  // Set the main API key based on selected service
+  const selectedService = settings.llmService;
+  switch (selectedService) {
+    case 'openai':
+      settings.apiKey = settings.openaiApiKey;
+      break;
+    case 'anthropic':
+      settings.apiKey = settings.anthropicApiKey;
+      break;
+    case 'google':
+      settings.apiKey = settings.googleApiKey;
+      break;
+    case 'custom':
+      settings.apiKey = settings.customApiKey;
+      break;
+  }
+  
+  try {
+    await chrome.storage.sync.set(settings);
+    showStatus('Settings saved successfully!', 'success');
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    showStatus('Error saving settings. Please try again.', 'error');
+  }
+}
+
+function resetSettings() {
+  if (confirm('Are you sure you want to reset all settings to defaults? This will clear all API keys.')) {
+    // Clear all form fields
+    document.getElementById('openaiApiKey').value = '';
+    document.getElementById('openaiModel').value = 'gpt-3.5-turbo';
+    document.getElementById('anthropicApiKey').value = '';
+    document.getElementById('anthropicModel').value = 'claude-3-sonnet-20240229';
+    document.getElementById('googleApiKey').value = '';
+    document.getElementById('googleModel').value = 'gemini-pro';
+    document.getElementById('customApiUrl').value = '';
+    document.getElementById('customApiKey').value = '';
+    document.getElementById('customModel').value = '';
+    document.getElementById('defaultLanguage').value = 'es';
+    document.getElementById('defaultLlm').value = 'openai';
+    
+    // Clear storage
+    chrome.storage.sync.clear(() => {
+      showStatus('Settings reset to defaults', 'success');
+    });
+  }
+}
+
+function toggleSection(sectionId) {
+  const content = document.getElementById(`${sectionId}-content`);
+  const arrow = document.getElementById(`${sectionId}-arrow`);
+  
+  if (content.classList.contains('hidden')) {
+    content.classList.remove('hidden');
+    arrow.classList.add('expanded');
+  } else {
+    content.classList.add('hidden');
+    arrow.classList.remove('expanded');
+  }
+}
+
+function showStatus(message, type) {
+  const statusDiv = document.getElementById('status');
+  statusDiv.textContent = message;
+  statusDiv.className = `status ${type}`;
+  statusDiv.style.display = 'block';
+  
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    statusDiv.style.display = 'none';
+  }, 3000);
+  
+  // Scroll to status
+  statusDiv.scrollIntoView({ behavior: 'smooth' });
+}

@@ -1,0 +1,125 @@
+// Popup script for Page Translator extension
+
+let isTranslating = false;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadSettings();
+  setupEventListeners();
+});
+
+async function loadSettings() {
+  const settings = await chrome.storage.sync.get([
+    'targetLanguage',
+    'llmService',
+    'apiKey'
+  ]);
+  
+  if (settings.targetLanguage) {
+    document.getElementById('targetLanguage').value = settings.targetLanguage;
+  }
+  
+  if (settings.llmService) {
+    document.getElementById('llmService').value = settings.llmService;
+  }
+}
+
+function setupEventListeners() {
+  document.getElementById('translateBtn').addEventListener('click', handleTranslate);
+  document.getElementById('revertBtn').addEventListener('click', handleRevert);
+  document.getElementById('settingsLink').addEventListener('click', openSettings);
+  
+  // Save settings on change
+  document.getElementById('targetLanguage').addEventListener('change', saveSettings);
+  document.getElementById('llmService').addEventListener('change', saveSettings);
+}
+
+async function saveSettings() {
+  const settings = {
+    targetLanguage: document.getElementById('targetLanguage').value,
+    llmService: document.getElementById('llmService').value
+  };
+  
+  await chrome.storage.sync.set(settings);
+}
+
+async function handleTranslate() {
+  if (isTranslating) return;
+  
+  const translateBtn = document.getElementById('translateBtn');
+  const targetLanguage = document.getElementById('targetLanguage').value;
+  const llmService = document.getElementById('llmService').value;
+  
+  // Check if API key is configured
+  const settings = await chrome.storage.sync.get(['apiKey', 'customApiUrl']);
+  if (!settings.apiKey && llmService !== 'custom') {
+    showStatus('Please configure your API key in settings first', 'error');
+    return;
+  }
+  
+  isTranslating = true;
+  translateBtn.textContent = 'Translating...';
+  translateBtn.disabled = true;
+  
+  try {
+    // Get current tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    // Save settings first
+    await saveSettings();
+    
+    // Send message to content script to start translation
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      action: 'translatePage',
+      targetLanguage: targetLanguage,
+      llmService: llmService
+    });
+    
+    if (response && response.success) {
+      showStatus('Translation completed successfully!', 'success');
+    } else {
+      showStatus(response?.error || 'Translation failed', 'error');
+    }
+  } catch (error) {
+    console.error('Translation error:', error);
+    showStatus('Translation failed. Please try again.', 'error');
+  } finally {
+    isTranslating = false;
+    translateBtn.textContent = 'Translate Page';
+    translateBtn.disabled = false;
+  }
+}
+
+async function handleRevert() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      action: 'revertTranslation'
+    });
+    
+    if (response && response.success) {
+      showStatus('Page reverted to original text', 'success');
+    } else {
+      showStatus('Failed to revert page', 'error');
+    }
+  } catch (error) {
+    console.error('Revert error:', error);
+    showStatus('Failed to revert page', 'error');
+  }
+}
+
+function showStatus(message, type) {
+  const statusDiv = document.getElementById('status');
+  statusDiv.textContent = message;
+  statusDiv.className = `status ${type}`;
+  statusDiv.style.display = 'block';
+  
+  // Auto-hide after 3 seconds
+  setTimeout(() => {
+    statusDiv.style.display = 'none';
+  }, 3000);
+}
+
+function openSettings() {
+  chrome.runtime.openOptionsPage();
+}
