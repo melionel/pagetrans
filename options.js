@@ -81,7 +81,9 @@ async function loadSettings() {
   if (settings.llmService) {
     document.getElementById('defaultLlm').value = settings.llmService;
   }
-  if (typeof settings.showOriginalOnHover !== 'undefined') {
+  if (typeof settings.showOriginalOnHover === 'undefined') {
+    document.getElementById('hoverOriginal').checked = true;
+  } else {
     document.getElementById('hoverOriginal').checked = !!settings.showOriginalOnHover;
   }
 }
@@ -183,7 +185,7 @@ function resetSettings() {
     document.getElementById('customModel').value = '';
     document.getElementById('defaultLanguage').value = 'es';
     document.getElementById('defaultLlm').value = 'openai';
-    document.getElementById('hoverOriginal').checked = false;
+    document.getElementById('hoverOriginal').checked = true;
     
     // Clear storage
     chrome.storage.sync.clear(() => {

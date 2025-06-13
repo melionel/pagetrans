@@ -71,6 +71,16 @@
       box-sizing: border-box;
       transition: border-color 0.3s ease;
     }
+
+    input[type="checkbox"] {
+      width: auto;
+      margin-right: 8px;
+    }
+
+    .inline-checkbox {
+      display: flex;
+      align-items: center;
+    }
     
     input:focus, select:focus, textarea:focus {
       outline: none;
@@ -348,8 +358,8 @@
       </div>
 
       <div class="form-group">
-        <label>
-          <input type="checkbox" id="hoverOriginal"> Show original text on hover
+        <label class="inline-checkbox">
+          <input type="checkbox" id="hoverOriginal" checked> Show original text on hover
         </label>
       </div>
     </div>

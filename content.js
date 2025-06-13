@@ -22,7 +22,7 @@ class PageTranslator {
 
     try {
       const { showOriginalOnHover } = await chrome.storage.sync.get('showOriginalOnHover');
-      this.showOriginalOnHover = !!showOriginalOnHover;
+      this.showOriginalOnHover = typeof showOriginalOnHover === 'undefined' ? true : !!showOriginalOnHover;
 
       // Find all text nodes
       const textNodes = this.findTextNodes(document.body);
