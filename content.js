@@ -32,13 +32,16 @@ class PageTranslator {
 
       // Find all text nodes
       const textNodes = this.findTextNodes(document.body);
+
+      // Merge consecutive nodes into complete sentences
+      const sentences = this.segmentSentences(textNodes);
       
-      if (textNodes.length === 0) {
+      if (sentences.length === 0) {
         return { success: false, error: 'No text found to translate' };
       }
 
-      // Group text nodes for batch translation
-      const textGroups = this.groupTextNodes(textNodes);
+      // Group sentence nodes for batch translation
+      const textGroups = this.groupTextNodes(sentences);
 
       this.totalGroups = textGroups.length;
       this.groupsCompleted = 0;
@@ -105,6 +108,29 @@ class PageTranslator {
     return textNodes;
   }
 
+  segmentSentences(textNodes) {
+    const sentences = [];
+    let current = [];
+    let buffer = '';
+
+    for (const node of textNodes) {
+      current.push(node);
+      buffer += node.textContent;
+
+      if (/([.!?\u3002\uFF01\uFF1F])\s*$/.test(buffer)) {
+        sentences.push(current);
+        current = [];
+        buffer = '';
+      }
+    }
+
+    if (current.length > 0) {
+      sentences.push(current);
+    }
+
+    return sentences;
+  }
+
   extractCommentNodes(node) {
     const commentNodes = [];
     const text = node.textContent;
@@ -131,14 +157,14 @@ class PageTranslator {
     return commentNodes;
   }
 
-  groupTextNodes(textNodes) {
+  groupTextNodes(sentences) {
     const groups = [];
-    const groupSize = 20; // Translate in batches of 20 texts
-    
-    for (let i = 0; i < textNodes.length; i += groupSize) {
-      groups.push(textNodes.slice(i, i + groupSize));
+    const groupSize = 20; // Translate in batches of 20 sentences
+
+    for (let i = 0; i < sentences.length; i += groupSize) {
+      groups.push(sentences.slice(i, i + groupSize));
     }
-    
+
     return groups;
   }
 
@@ -172,23 +198,37 @@ class PageTranslator {
   }
 
   async translateGroup(group, targetLanguage, llmService) {
-    const texts = group.map(node => node.textContent.trim()).filter(text => text.length > 0);
+    const texts = group.map(sentence => sentence.map(n => n.textContent.trim()).join('')).filter(t => t.length > 0);
     if (texts.length === 0) return 0;
 
     const context = document.title || '';
     const { translations, tokens } = await this.requestTranslation(texts, targetLanguage, llmService, context);
 
     for (let i = 0; i < group.length && i < translations.length; i++) {
-      const node = group[i];
-      const originalText = node.textContent;
+      const sentenceNodes = group[i];
       const translatedText = translations[i];
 
-      if (originalText.trim() && translatedText && translatedText !== originalText) {
-        this.originalTexts.set(node, originalText);
-        this.translatedTexts.set(node, translatedText);
+      if (!translatedText) continue;
 
-        // Apply translation with font size adjustment
-        this.applyTranslation(node, translatedText, originalText);
+      const totalLength = sentenceNodes.reduce((sum, n) => sum + n.textContent.length, 0);
+      let offset = 0;
+
+      for (let j = 0; j < sentenceNodes.length; j++) {
+        const node = sentenceNodes[j];
+        const originalText = node.textContent;
+
+        const sliceEnd = (j === sentenceNodes.length - 1)
+          ? translatedText.length
+          : Math.round(offset + (originalText.length / totalLength) * translatedText.length);
+
+        const part = translatedText.slice(offset, sliceEnd);
+        offset = sliceEnd;
+
+        if (originalText.trim() && part && part !== originalText) {
+          this.originalTexts.set(node, originalText);
+          this.translatedTexts.set(node, part);
+          this.applyTranslation(node, part, originalText);
+        }
       }
     }
     return tokens;
