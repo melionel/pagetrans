@@ -6,11 +6,13 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 
 - **Multiple LLM Support**: OpenAI GPT, Azure OpenAI, Anthropic Claude, Google Gemini, and Custom APIs
 - **In-place Translation**: Replaces text directly on the page while maintaining layout
-- **Smart Font Sizing**: Automatically adjusts font sizes to preserve visual balance
+- **Font Preservation**: Keeps original font size and style so layout remains unchanged
 - **Language Detection**: Supports 12+ languages including Spanish, French, German, Japanese, Chinese, etc.
 - **Translation Cache**: Avoids re-translating the same content
 - **Easy Revert**: One-click to restore original text
 - **Hover Reveal**: View the original text when hovering over a translation (can be disabled in settings)
+- **Parallel Translation**: Processes multiple batches simultaneously for faster results (configurable)
+- **Progress Feedback**: Popup displays a progress bar and token usage while translating
 
 ## Installation
 
@@ -55,9 +57,10 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 3. **Select** your target language from the dropdown
 4. **Choose** your preferred LLM service
 5. **Click** "Translate Page" to start translation
-6. **Wait** for the translation to complete (progress shown in popup)
+6. **Wait** for the translation to complete (progress bar and token usage shown in popup)
 7. **Click** "Revert" to restore original text
 8. **Optional**: Disable "Show original text on hover" in settings if you don't want to see the source text when hovering
+9. **Optional**: Adjust the "Parallel Requests" value in settings for faster or slower translations
 
 ## How It Works
 
@@ -73,13 +76,10 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 
 ### Layout Preservation
 - Maintains original DOM structure
-- Adjusts font sizes based on text length changes
 - Adds subtle visual indicators for translated text
 
-### Smart Font Sizing
-- If translated text is much longer: slightly reduces font size
-- If translated text is much shorter: slightly increases font size
-- Keeps changes minimal to preserve design
+### Font Preservation
+- Translated text keeps the same font size and style as the original
 
 ## File Structure
 

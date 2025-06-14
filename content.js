@@ -8,6 +8,10 @@ class PageTranslator {
     this.isTranslated = false;
     this.translationInProgress = false;
     this.showOriginalOnHover = false;
+    this.maxParallel = 3;
+    this.totalGroups = 0;
+    this.groupsCompleted = 0;
+    this.tokenUsage = 0;
 
     this.handleMouseEnter = this.handleMouseEnter.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
@@ -21,8 +25,10 @@ class PageTranslator {
     this.translationInProgress = true;
 
     try {
-      const { showOriginalOnHover } = await chrome.storage.sync.get('showOriginalOnHover');
+      const { showOriginalOnHover, parallelRequests } = await chrome.storage.sync.get(['showOriginalOnHover', 'parallelRequests']);
       this.showOriginalOnHover = typeof showOriginalOnHover === 'undefined' ? true : !!showOriginalOnHover;
+      const pr = parseInt(parallelRequests, 10);
+      this.maxParallel = pr >= 1 && pr <= 100 ? pr : 3;
 
       // Find all text nodes
       const textNodes = this.findTextNodes(document.body);
@@ -33,39 +39,17 @@ class PageTranslator {
 
       // Group text nodes for batch translation
       const textGroups = this.groupTextNodes(textNodes);
-      
-      // Translate each group
-      for (const group of textGroups) {
-        const texts = group.map(node => node.textContent.trim()).filter(text => text.length > 0);
-        
-        if (texts.length === 0) continue;
 
-        try {
-          const context = document.title || '';
-          const translations = await this.requestTranslation(texts, targetLanguage, llmService, context);
-          
-          // Apply translations
-          for (let i = 0; i < group.length && i < translations.length; i++) {
-            const node = group[i];
-            const originalText = node.textContent;
-            const translatedText = translations[i];
-            
-            if (originalText.trim() && translatedText && translatedText !== originalText) {
-              this.originalTexts.set(node, originalText);
-              this.translatedTexts.set(node, translatedText);
-              
-              // Apply translation with font size adjustment
-              this.applyTranslation(node, translatedText, originalText);
-            }
-          }
-        } catch (error) {
-          console.error('Translation error for group:', error);
-          // Continue with next group even if one fails
-        }
-      }
+      this.totalGroups = textGroups.length;
+      this.groupsCompleted = 0;
+      this.tokenUsage = 0;
+      this.reportProgress();
+
+      await this.processGroups(textGroups, targetLanguage, llmService);
 
       this.isTranslated = true;
-      return { success: true };
+      this.reportProgress();
+      return { success: true, tokens: this.tokenUsage };
       
     } catch (error) {
       console.error('Page translation error:', error);
@@ -158,6 +142,58 @@ class PageTranslator {
     return groups;
   }
 
+  async processGroups(groups, targetLanguage, llmService) {
+    let index = 0;
+    const workers = [];
+    const concurrency = Math.min(this.maxParallel, groups.length);
+
+    const work = async () => {
+      while (true) {
+        let currentIndex;
+        if (index >= groups.length) break;
+        currentIndex = index++;
+        const group = groups[currentIndex];
+        try {
+          const tokens = await this.translateGroup(group, targetLanguage, llmService);
+          this.groupsCompleted++;
+          this.tokenUsage += tokens;
+          this.reportProgress();
+        } catch (error) {
+          console.error('Translation error for group:', error);
+        }
+      }
+    };
+
+    for (let i = 0; i < concurrency; i++) {
+      workers.push(work());
+    }
+
+    await Promise.all(workers);
+  }
+
+  async translateGroup(group, targetLanguage, llmService) {
+    const texts = group.map(node => node.textContent.trim()).filter(text => text.length > 0);
+    if (texts.length === 0) return 0;
+
+    const context = document.title || '';
+    const { translations, tokens } = await this.requestTranslation(texts, targetLanguage, llmService, context);
+
+    for (let i = 0; i < group.length && i < translations.length; i++) {
+      const node = group[i];
+      const originalText = node.textContent;
+      const translatedText = translations[i];
+
+      if (originalText.trim() && translatedText && translatedText !== originalText) {
+        this.originalTexts.set(node, originalText);
+        this.translatedTexts.set(node, translatedText);
+
+        // Apply translation with font size adjustment
+        this.applyTranslation(node, translatedText, originalText);
+      }
+    }
+    return tokens;
+  }
+
   async requestTranslation(texts, targetLanguage, llmService, context) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
@@ -170,7 +206,7 @@ class PageTranslator {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else if (response.success) {
-          resolve(response.translations);
+          resolve({ translations: response.translations, tokens: response.tokens || 0 });
         } else {
           reject(new Error(response.error || 'Translation failed'));
         }
@@ -182,26 +218,8 @@ class PageTranslator {
     const parent = textNode.parentElement;
     if (!parent) return;
 
-    // Store original font size
-    const originalStyle = window.getComputedStyle(parent);
-    const originalFontSize = parseFloat(originalStyle.fontSize);
-    
-    // Calculate length ratio
-    const lengthRatio = originalText.length / translatedText.length;
-    
-    // Apply translation
+    // Apply translation without altering original font styling
     textNode.textContent = translatedText;
-    
-    // Adjust font size to maintain visual balance
-    if (lengthRatio < 0.7) {
-      // Translated text is much longer, reduce font size slightly
-      const newFontSize = Math.max(originalFontSize * 0.9, originalFontSize - 2);
-      parent.style.fontSize = `${newFontSize}px`;
-    } else if (lengthRatio > 1.5) {
-      // Translated text is much shorter, increase font size slightly
-      const newFontSize = Math.min(originalFontSize * 1.1, originalFontSize + 2);
-      parent.style.fontSize = `${newFontSize}px`;
-    }
     
     // Add a subtle indicator that this text was translated
     parent.setAttribute('data-translated', 'true');
@@ -273,6 +291,15 @@ class PageTranslator {
         node.textContent = translated;
       }
     }
+  }
+
+  reportProgress() {
+    chrome.runtime.sendMessage({
+      action: 'translationProgress',
+      completed: this.groupsCompleted,
+      total: this.totalGroups,
+      tokens: this.tokenUsage
+    });
   }
 }
 

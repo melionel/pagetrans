@@ -60,36 +60,36 @@ async function handleTranslation(request, sendResponse) {
     // Check cache first
     const cacheKey = `${llmService}-${targetLanguage}-${JSON.stringify(texts)}`;
     if (translationCache.has(cacheKey)) {
-      sendResponse({ success: true, translations: translationCache.get(cacheKey) });
+      sendResponse({ success: true, translations: translationCache.get(cacheKey), tokens: 0 });
       return;
     }
     
-    let translations;
+    let result;
 
     switch (llmService) {
       case 'openai':
-        translations = await translateWithOpenAI(texts, targetLanguage, settings, context);
+        result = await translateWithOpenAI(texts, targetLanguage, settings, context);
         break;
       case 'azure':
-        translations = await translateWithAzureOpenAI(texts, targetLanguage, settings, context);
+        result = await translateWithAzureOpenAI(texts, targetLanguage, settings, context);
         break;
       case 'anthropic':
-        translations = await translateWithAnthropic(texts, targetLanguage, settings, context);
+        result = await translateWithAnthropic(texts, targetLanguage, settings, context);
         break;
       case 'google':
-        translations = await translateWithGoogle(texts, targetLanguage, settings, context);
+        result = await translateWithGoogle(texts, targetLanguage, settings, context);
         break;
       case 'custom':
-        translations = await translateWithCustomAPI(texts, targetLanguage, settings, context);
+        result = await translateWithCustomAPI(texts, targetLanguage, settings, context);
         break;
       default:
         throw new Error('Unknown LLM service');
     }
     
     // Cache the result
-    translationCache.set(cacheKey, translations);
-    
-    sendResponse({ success: true, translations });
+    translationCache.set(cacheKey, result.translations);
+
+    sendResponse({ success: true, translations: result.translations, tokens: result.tokens });
     
   } catch (error) {
     console.error('Translation error:', error);
@@ -132,8 +132,9 @@ async function translateWithOpenAI(texts, targetLanguage, settings, context) {
   
   const data = await response.json();
   const translatedText = data.choices[0].message.content.trim();
+  const tokens = data.usage?.total_tokens || 0;
 
-  return parseTranslationResponse(translatedText, texts.length);
+  return { translations: parseTranslationResponse(translatedText, texts.length), tokens };
 }
 
 async function translateWithAzureOpenAI(texts, targetLanguage, settings, context) {
@@ -178,8 +179,9 @@ async function translateWithAzureOpenAI(texts, targetLanguage, settings, context
 
   const data = await response.json();
   const translatedText = data.choices[0].message.content.trim();
+  const tokens = data.usage?.total_tokens || 0;
 
-  return parseTranslationResponse(translatedText, texts.length);
+  return { translations: parseTranslationResponse(translatedText, texts.length), tokens };
 }
 
 async function translateWithAnthropic(texts, targetLanguage, settings, context) {
@@ -214,8 +216,9 @@ async function translateWithAnthropic(texts, targetLanguage, settings, context) 
   
   const data = await response.json();
   const translatedText = data.content[0].text.trim();
-  
-  return parseTranslationResponse(translatedText, texts.length);
+  const tokens = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+
+  return { translations: parseTranslationResponse(translatedText, texts.length), tokens };
 }
 
 async function translateWithGoogle(texts, targetLanguage, settings, context) {
@@ -252,8 +255,9 @@ async function translateWithGoogle(texts, targetLanguage, settings, context) {
   
   const data = await response.json();
   const translatedText = data.candidates[0].content.parts[0].text.trim();
-  
-  return parseTranslationResponse(translatedText, texts.length);
+  const tokens = data.usageMetadata?.totalTokenCount || data.usageMetadata?.totalTokens || 0;
+
+  return { translations: parseTranslationResponse(translatedText, texts.length), tokens };
 }
 
 async function translateWithCustomAPI(texts, targetLanguage, settings, context) {
@@ -287,8 +291,8 @@ async function translateWithCustomAPI(texts, targetLanguage, settings, context) 
   if (!translatedText) {
     throw new Error('Invalid response format from custom API');
   }
-  
-  return parseTranslationResponse(translatedText.trim(), texts.length);
+
+  return { translations: parseTranslationResponse(translatedText.trim(), texts.length), tokens: 0 };
 }
 
 function createTranslationPrompt(texts, targetLanguage, context = '') {
