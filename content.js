@@ -205,26 +205,8 @@ class PageTranslator {
     const parent = textNode.parentElement;
     if (!parent) return;
 
-    // Store original font size
-    const originalStyle = window.getComputedStyle(parent);
-    const originalFontSize = parseFloat(originalStyle.fontSize);
-    
-    // Calculate length ratio
-    const lengthRatio = originalText.length / translatedText.length;
-    
-    // Apply translation
+    // Apply translation without altering original font styling
     textNode.textContent = translatedText;
-    
-    // Adjust font size to maintain visual balance
-    if (lengthRatio < 0.7) {
-      // Translated text is much longer, reduce font size slightly
-      const newFontSize = Math.max(originalFontSize * 0.9, originalFontSize - 2);
-      parent.style.fontSize = `${newFontSize}px`;
-    } else if (lengthRatio > 1.5) {
-      // Translated text is much shorter, increase font size slightly
-      const newFontSize = Math.min(originalFontSize * 1.1, originalFontSize + 2);
-      parent.style.fontSize = `${newFontSize}px`;
-    }
     
     // Add a subtle indicator that this text was translated
     parent.setAttribute('data-translated', 'true');

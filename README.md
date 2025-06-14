@@ -6,7 +6,7 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 
 - **Multiple LLM Support**: OpenAI GPT, Azure OpenAI, Anthropic Claude, Google Gemini, and Custom APIs
 - **In-place Translation**: Replaces text directly on the page while maintaining layout
-- **Smart Font Sizing**: Automatically adjusts font sizes to preserve visual balance
+- **Font Preservation**: Keeps original font size and style so layout remains unchanged
 - **Language Detection**: Supports 12+ languages including Spanish, French, German, Japanese, Chinese, etc.
 - **Translation Cache**: Avoids re-translating the same content
 - **Easy Revert**: One-click to restore original text
@@ -75,13 +75,10 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 
 ### Layout Preservation
 - Maintains original DOM structure
-- Adjusts font sizes based on text length changes
 - Adds subtle visual indicators for translated text
 
-### Smart Font Sizing
-- If translated text is much longer: slightly reduces font size
-- If translated text is much shorter: slightly increases font size
-- Keeps changes minimal to preserve design
+### Font Preservation
+- Translated text keeps the same font size and style as the original
 
 ## File Structure
 
