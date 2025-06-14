@@ -12,6 +12,7 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 - **Easy Revert**: One-click to restore original text
 - **Hover Reveal**: View the original text when hovering over a translation (can be disabled in settings)
 - **Parallel Translation**: Processes multiple batches simultaneously for faster results (configurable)
+- **Progress Feedback**: Popup displays a progress bar and token usage while translating
 
 ## Installation
 
@@ -56,7 +57,7 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 3. **Select** your target language from the dropdown
 4. **Choose** your preferred LLM service
 5. **Click** "Translate Page" to start translation
-6. **Wait** for the translation to complete (progress shown in popup)
+6. **Wait** for the translation to complete (progress bar and token usage shown in popup)
 7. **Click** "Revert" to restore original text
 8. **Optional**: Disable "Show original text on hover" in settings if you don't want to see the source text when hovering
 9. **Optional**: Adjust the "Parallel Requests" value in settings for faster or slower translations

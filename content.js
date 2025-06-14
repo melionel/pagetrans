@@ -9,6 +9,9 @@ class PageTranslator {
     this.translationInProgress = false;
     this.showOriginalOnHover = false;
     this.maxParallel = 3;
+    this.totalGroups = 0;
+    this.groupsCompleted = 0;
+    this.tokenUsage = 0;
 
     this.handleMouseEnter = this.handleMouseEnter.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
@@ -36,11 +39,17 @@ class PageTranslator {
 
       // Group text nodes for batch translation
       const textGroups = this.groupTextNodes(textNodes);
-      
+
+      this.totalGroups = textGroups.length;
+      this.groupsCompleted = 0;
+      this.tokenUsage = 0;
+      this.reportProgress();
+
       await this.processGroups(textGroups, targetLanguage, llmService);
 
       this.isTranslated = true;
-      return { success: true };
+      this.reportProgress();
+      return { success: true, tokens: this.tokenUsage };
       
     } catch (error) {
       console.error('Page translation error:', error);
@@ -145,7 +154,10 @@ class PageTranslator {
         currentIndex = index++;
         const group = groups[currentIndex];
         try {
-          await this.translateGroup(group, targetLanguage, llmService);
+          const tokens = await this.translateGroup(group, targetLanguage, llmService);
+          this.groupsCompleted++;
+          this.tokenUsage += tokens;
+          this.reportProgress();
         } catch (error) {
           console.error('Translation error for group:', error);
         }
@@ -161,10 +173,10 @@ class PageTranslator {
 
   async translateGroup(group, targetLanguage, llmService) {
     const texts = group.map(node => node.textContent.trim()).filter(text => text.length > 0);
-    if (texts.length === 0) return;
+    if (texts.length === 0) return 0;
 
     const context = document.title || '';
-    const translations = await this.requestTranslation(texts, targetLanguage, llmService, context);
+    const { translations, tokens } = await this.requestTranslation(texts, targetLanguage, llmService, context);
 
     for (let i = 0; i < group.length && i < translations.length; i++) {
       const node = group[i];
@@ -179,6 +191,7 @@ class PageTranslator {
         this.applyTranslation(node, translatedText, originalText);
       }
     }
+    return tokens;
   }
 
   async requestTranslation(texts, targetLanguage, llmService, context) {
@@ -193,7 +206,7 @@ class PageTranslator {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
         } else if (response.success) {
-          resolve(response.translations);
+          resolve({ translations: response.translations, tokens: response.tokens || 0 });
         } else {
           reject(new Error(response.error || 'Translation failed'));
         }
@@ -278,6 +291,15 @@ class PageTranslator {
         node.textContent = translated;
       }
     }
+  }
+
+  reportProgress() {
+    chrome.runtime.sendMessage({
+      action: 'translationProgress',
+      completed: this.groupsCompleted,
+      total: this.totalGroups,
+      tokens: this.tokenUsage
+    });
   }
 }
 
