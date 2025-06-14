@@ -8,6 +8,7 @@ class PageTranslator {
     this.isTranslated = false;
     this.translationInProgress = false;
     this.showOriginalOnHover = false;
+    this.maxParallel = 3;
 
     this.handleMouseEnter = this.handleMouseEnter.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
@@ -21,8 +22,10 @@ class PageTranslator {
     this.translationInProgress = true;
 
     try {
-      const { showOriginalOnHover } = await chrome.storage.sync.get('showOriginalOnHover');
+      const { showOriginalOnHover, parallelRequests } = await chrome.storage.sync.get(['showOriginalOnHover', 'parallelRequests']);
       this.showOriginalOnHover = typeof showOriginalOnHover === 'undefined' ? true : !!showOriginalOnHover;
+      const pr = parseInt(parallelRequests, 10);
+      this.maxParallel = pr >= 1 && pr <= 100 ? pr : 3;
 
       // Find all text nodes
       const textNodes = this.findTextNodes(document.body);
@@ -34,35 +37,7 @@ class PageTranslator {
       // Group text nodes for batch translation
       const textGroups = this.groupTextNodes(textNodes);
       
-      // Translate each group
-      for (const group of textGroups) {
-        const texts = group.map(node => node.textContent.trim()).filter(text => text.length > 0);
-        
-        if (texts.length === 0) continue;
-
-        try {
-          const context = document.title || '';
-          const translations = await this.requestTranslation(texts, targetLanguage, llmService, context);
-          
-          // Apply translations
-          for (let i = 0; i < group.length && i < translations.length; i++) {
-            const node = group[i];
-            const originalText = node.textContent;
-            const translatedText = translations[i];
-            
-            if (originalText.trim() && translatedText && translatedText !== originalText) {
-              this.originalTexts.set(node, originalText);
-              this.translatedTexts.set(node, translatedText);
-              
-              // Apply translation with font size adjustment
-              this.applyTranslation(node, translatedText, originalText);
-            }
-          }
-        } catch (error) {
-          console.error('Translation error for group:', error);
-          // Continue with next group even if one fails
-        }
-      }
+      await this.processGroups(textGroups, targetLanguage, llmService);
 
       this.isTranslated = true;
       return { success: true };
@@ -156,6 +131,54 @@ class PageTranslator {
     }
     
     return groups;
+  }
+
+  async processGroups(groups, targetLanguage, llmService) {
+    let index = 0;
+    const workers = [];
+    const concurrency = Math.min(this.maxParallel, groups.length);
+
+    const work = async () => {
+      while (true) {
+        let currentIndex;
+        if (index >= groups.length) break;
+        currentIndex = index++;
+        const group = groups[currentIndex];
+        try {
+          await this.translateGroup(group, targetLanguage, llmService);
+        } catch (error) {
+          console.error('Translation error for group:', error);
+        }
+      }
+    };
+
+    for (let i = 0; i < concurrency; i++) {
+      workers.push(work());
+    }
+
+    await Promise.all(workers);
+  }
+
+  async translateGroup(group, targetLanguage, llmService) {
+    const texts = group.map(node => node.textContent.trim()).filter(text => text.length > 0);
+    if (texts.length === 0) return;
+
+    const context = document.title || '';
+    const translations = await this.requestTranslation(texts, targetLanguage, llmService, context);
+
+    for (let i = 0; i < group.length && i < translations.length; i++) {
+      const node = group[i];
+      const originalText = node.textContent;
+      const translatedText = translations[i];
+
+      if (originalText.trim() && translatedText && translatedText !== originalText) {
+        this.originalTexts.set(node, originalText);
+        this.translatedTexts.set(node, translatedText);
+
+        // Apply translation with font size adjustment
+        this.applyTranslation(node, translatedText, originalText);
+      }
+    }
   }
 
   async requestTranslation(texts, targetLanguage, llmService, context) {
