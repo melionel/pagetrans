@@ -41,7 +41,8 @@ class PageTranslator {
         if (texts.length === 0) continue;
 
         try {
-          const translations = await this.requestTranslation(texts, targetLanguage, llmService);
+          const context = document.title || '';
+          const translations = await this.requestTranslation(texts, targetLanguage, llmService, context);
           
           // Apply translations
           for (let i = 0; i < group.length && i < translations.length; i++) {
@@ -76,43 +77,74 @@ class PageTranslator {
 
   findTextNodes(element) {
     const textNodes = [];
-    const walker = document.createTreeWalker(
-      element,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode: (node) => {
-          // Skip script, style, and other non-visible elements
-          const parent = node.parentElement;
-          if (!parent) return NodeFilter.FILTER_REJECT;
-          
-          const tagName = parent.tagName.toLowerCase();
-          if (['script', 'style', 'noscript', 'iframe', 'object'].includes(tagName)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          
-          // Skip if parent is hidden
-          const style = window.getComputedStyle(parent);
-          if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
-            return NodeFilter.FILTER_REJECT;
-          }
-          
-          // Skip if text is too short or only whitespace
-          const text = node.textContent.trim();
-          if (text.length < 2 || /^\s*$/.test(text)) {
-            return NodeFilter.FILTER_REJECT;
-          }
-          
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      }
-    );
-
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    const nodes = [];
     let node;
     while (node = walker.nextNode()) {
-      textNodes.push(node);
+      nodes.push(node);
+    }
+
+    for (const n of nodes) {
+      const parent = n.parentElement;
+      if (!parent) continue;
+
+      const tagName = parent.tagName.toLowerCase();
+      if (['script', 'style', 'noscript', 'iframe', 'object'].includes(tagName)) {
+        continue;
+      }
+
+      // Handle comments inside <code> or <pre> blocks
+      if (parent.closest('code, pre')) {
+        const comments = this.extractCommentNodes(n);
+        for (const c of comments) {
+          const txt = c.textContent.trim();
+          if (txt.length >= 2) {
+            textNodes.push(c);
+          }
+        }
+        continue;
+      }
+
+      const style = window.getComputedStyle(parent);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        continue;
+      }
+
+      const text = n.textContent.trim();
+      if (text.length < 2) {
+        continue;
+      }
+
+      textNodes.push(n);
     }
 
     return textNodes;
+  }
+
+  extractCommentNodes(node) {
+    const commentNodes = [];
+    const text = node.textContent;
+    const regex = /(\/\/.*|\/\*[\s\S]*?\*\/|#.*$|<!--[\s\S]*?-->)/gm;
+    const matches = Array.from(text.matchAll(regex));
+    if (matches.length === 0) {
+      return commentNodes;
+    }
+
+    let current = node;
+    let offset = 0;
+    for (const match of matches) {
+      const start = match.index;
+      const end = start + match[0].length;
+      if (start > offset) {
+        current = current.splitText(start - offset);
+        offset = start;
+      }
+      const after = current.splitText(end - offset);
+      commentNodes.push(current);
+      current = after;
+      offset = end;
+    }
+    return commentNodes;
   }
 
   groupTextNodes(textNodes) {
@@ -126,13 +158,14 @@ class PageTranslator {
     return groups;
   }
 
-  async requestTranslation(texts, targetLanguage, llmService) {
+  async requestTranslation(texts, targetLanguage, llmService, context) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
         action: 'translate',
         texts: texts,
         targetLanguage: targetLanguage,
-        llmService: llmService
+        llmService: llmService,
+        context: context
       }, (response) => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message));
