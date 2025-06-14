@@ -12,7 +12,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function handleTranslation(request, sendResponse) {
   try {
-    const { texts, targetLanguage, llmService } = request;
+    const { texts, targetLanguage, llmService, context } = request;
     
     // Get API configuration
     const settings = await chrome.storage.sync.get([
@@ -65,22 +65,22 @@ async function handleTranslation(request, sendResponse) {
     }
     
     let translations;
-    
+
     switch (llmService) {
       case 'openai':
-        translations = await translateWithOpenAI(texts, targetLanguage, settings);
+        translations = await translateWithOpenAI(texts, targetLanguage, settings, context);
         break;
       case 'azure':
-        translations = await translateWithAzureOpenAI(texts, targetLanguage, settings);
+        translations = await translateWithAzureOpenAI(texts, targetLanguage, settings, context);
         break;
       case 'anthropic':
-        translations = await translateWithAnthropic(texts, targetLanguage, settings);
+        translations = await translateWithAnthropic(texts, targetLanguage, settings, context);
         break;
       case 'google':
-        translations = await translateWithGoogle(texts, targetLanguage, settings);
+        translations = await translateWithGoogle(texts, targetLanguage, settings, context);
         break;
       case 'custom':
-        translations = await translateWithCustomAPI(texts, targetLanguage, settings);
+        translations = await translateWithCustomAPI(texts, targetLanguage, settings, context);
         break;
       default:
         throw new Error('Unknown LLM service');
@@ -97,10 +97,10 @@ async function handleTranslation(request, sendResponse) {
   }
 }
 
-async function translateWithOpenAI(texts, targetLanguage, settings) {
+async function translateWithOpenAI(texts, targetLanguage, settings, context) {
   const model = settings.openaiModel || 'gpt-3.5-turbo';
   
-  const prompt = createTranslationPrompt(texts, targetLanguage);
+  const prompt = createTranslationPrompt(texts, targetLanguage, context);
   
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -113,7 +113,7 @@ async function translateWithOpenAI(texts, targetLanguage, settings) {
       messages: [
         {
           role: 'system',
-          content: 'You are a professional translator. Translate the given texts to the target language while preserving the meaning, tone, and context. Return only the translations in the same order, separated by newlines.'
+          content: 'You are a professional translator. Consider the webpage context to provide natural translations without changing the original meaning. Return the translations in the same order, separated by newlines.'
         },
         {
           role: 'user',
@@ -136,7 +136,7 @@ async function translateWithOpenAI(texts, targetLanguage, settings) {
   return parseTranslationResponse(translatedText, texts.length);
 }
 
-async function translateWithAzureOpenAI(texts, targetLanguage, settings) {
+async function translateWithAzureOpenAI(texts, targetLanguage, settings, context) {
   const apiVersion = settings.azureApiVersion || '2024-02-15-preview';
   const deployment = settings.azureDeployment;
   const endpoint = settings.azureEndpoint?.replace(/\/$/, '');
@@ -145,7 +145,7 @@ async function translateWithAzureOpenAI(texts, targetLanguage, settings) {
     throw new Error('Azure endpoint or deployment not configured');
   }
 
-  const prompt = createTranslationPrompt(texts, targetLanguage);
+  const prompt = createTranslationPrompt(texts, targetLanguage, context);
 
   const url = `${endpoint}/openai/deployments/${deployment}/chat/completions?api-version=${apiVersion}`;
 
@@ -159,7 +159,7 @@ async function translateWithAzureOpenAI(texts, targetLanguage, settings) {
       messages: [
         {
           role: 'system',
-          content: 'You are a professional translator. Translate the given texts to the target language while preserving the meaning, tone, and context. Return only the translations in the same order, separated by newlines.'
+          content: 'You are a professional translator. Consider the webpage context to provide natural translations without changing the original meaning. Return the translations in the same order, separated by newlines.'
         },
         {
           role: 'user',
@@ -182,10 +182,10 @@ async function translateWithAzureOpenAI(texts, targetLanguage, settings) {
   return parseTranslationResponse(translatedText, texts.length);
 }
 
-async function translateWithAnthropic(texts, targetLanguage, settings) {
+async function translateWithAnthropic(texts, targetLanguage, settings, context) {
   const model = settings.anthropicModel || 'claude-3-sonnet-20240229';
   
-  const prompt = createTranslationPrompt(texts, targetLanguage);
+  const prompt = createTranslationPrompt(texts, targetLanguage, context);
   
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -201,7 +201,7 @@ async function translateWithAnthropic(texts, targetLanguage, settings) {
       messages: [
         {
           role: 'user',
-          content: `You are a professional translator. Translate the following texts to ${getLanguageName(targetLanguage)} while preserving meaning, tone, and context. Return only the translations in the same order, separated by newlines.\n\n${prompt}`
+          content: `You are a professional translator. Consider the webpage context to provide natural translations without changing the original meaning. Translate the following texts to ${getLanguageName(targetLanguage)}. Return the translations in the same order, separated by newlines.\n\n${prompt}`
         }
       ]
     })
@@ -218,10 +218,10 @@ async function translateWithAnthropic(texts, targetLanguage, settings) {
   return parseTranslationResponse(translatedText, texts.length);
 }
 
-async function translateWithGoogle(texts, targetLanguage, settings) {
+async function translateWithGoogle(texts, targetLanguage, settings, context) {
   const model = settings.googleModel || 'gemini-pro';
   
-  const prompt = createTranslationPrompt(texts, targetLanguage);
+  const prompt = createTranslationPrompt(texts, targetLanguage, context);
   
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.apiKey}`, {
     method: 'POST',
@@ -233,7 +233,7 @@ async function translateWithGoogle(texts, targetLanguage, settings) {
         {
           parts: [
             {
-              text: `You are a professional translator. Translate the following texts to ${getLanguageName(targetLanguage)} while preserving meaning, tone, and context. Return only the translations in the same order, separated by newlines.\n\n${prompt}`
+              text: `You are a professional translator. Consider the webpage context to provide natural translations without changing the original meaning. Translate the following texts to ${getLanguageName(targetLanguage)}. Return the translations in the same order, separated by newlines.\n\n${prompt}`
             }
           ]
         }
@@ -256,12 +256,12 @@ async function translateWithGoogle(texts, targetLanguage, settings) {
   return parseTranslationResponse(translatedText, texts.length);
 }
 
-async function translateWithCustomAPI(texts, targetLanguage, settings) {
+async function translateWithCustomAPI(texts, targetLanguage, settings, context) {
   if (!settings.customApiUrl) {
     throw new Error('Custom API URL not configured');
   }
   
-  const prompt = createTranslationPrompt(texts, targetLanguage);
+  const prompt = createTranslationPrompt(texts, targetLanguage, context);
   
   const response = await fetch(settings.customApiUrl, {
     method: 'POST',
@@ -271,7 +271,7 @@ async function translateWithCustomAPI(texts, targetLanguage, settings) {
     },
     body: JSON.stringify({
       model: settings.customModel || 'default',
-      prompt: `You are a professional translator. Translate the following texts to ${getLanguageName(targetLanguage)} while preserving meaning, tone, and context. Return only the translations in the same order, separated by newlines.\n\n${prompt}`,
+      prompt: `You are a professional translator. Consider the webpage context to provide natural translations without changing the original meaning. Translate the following texts to ${getLanguageName(targetLanguage)}. Return the translations in the same order, separated by newlines.\n\n${prompt}`,
       temperature: 0.3,
       max_tokens: 4000
     })
@@ -291,11 +291,12 @@ async function translateWithCustomAPI(texts, targetLanguage, settings) {
   return parseTranslationResponse(translatedText.trim(), texts.length);
 }
 
-function createTranslationPrompt(texts, targetLanguage) {
+function createTranslationPrompt(texts, targetLanguage, context = '') {
   const languageName = getLanguageName(targetLanguage);
   const numberedTexts = texts.map((text, index) => `${index + 1}. ${text}`).join('\n');
-  
-  return `Translate these texts to ${languageName}:\n\n${numberedTexts}`;
+  const ctx = context ? `Context: ${context}\n\n` : '';
+
+  return `${ctx}Translate these texts to ${languageName}:\n\n${numberedTexts}`;
 }
 
 function parseTranslationResponse(translatedText, expectedCount) {
