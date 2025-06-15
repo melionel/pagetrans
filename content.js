@@ -35,7 +35,7 @@ class PageTranslator {
 
       // Merge consecutive nodes into complete sentences
       const sentences = this.segmentSentences(textNodes);
-      
+
       if (sentences.length === 0) {
         return { success: false, error: 'No text found to translate' };
       }
@@ -112,8 +112,24 @@ class PageTranslator {
     const sentences = [];
     let current = [];
     let buffer = '';
+    const blockSelector = 'p,div,li,td,th,section,article,header,footer,main,nav,aside,blockquote,h1,h2,h3,h4,h5,h6';
+    let lastBlock = null;
+
+    const getBlock = (node) => {
+      return node.parentElement ? node.parentElement.closest(blockSelector) || document.body : document.body;
+    };
 
     for (const node of textNodes) {
+      const block = getBlock(node);
+
+      if (lastBlock && block !== lastBlock) {
+        if (current.length > 0) {
+          sentences.push(current);
+          current = [];
+          buffer = '';
+        }
+      }
+
       current.push(node);
       buffer += node.textContent;
 
@@ -122,6 +138,8 @@ class PageTranslator {
         current = [];
         buffer = '';
       }
+
+      lastBlock = block;
     }
 
     if (current.length > 0) {
@@ -198,7 +216,9 @@ class PageTranslator {
   }
 
   async translateGroup(group, targetLanguage, llmService) {
-    const texts = group.map(sentence => sentence.map(n => n.textContent.trim()).join('')).filter(t => t.length > 0);
+    const texts = group
+      .map(sentence => sentence.map(n => n.textContent).join(''))
+      .filter(t => t.trim().length > 0);
     if (texts.length === 0) return 0;
 
     const context = document.title || '';
