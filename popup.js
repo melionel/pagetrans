@@ -135,7 +135,7 @@ async function handleTranslate() {
       llmService: llmService
     });
 
-    window.close();
+    closePopup();
   } catch (error) {
     console.error('Translation error:', error);
     showStatus('Translation failed. Please try again.', 'error');
@@ -179,4 +179,9 @@ function showStatus(message, type) {
 
 function openSettings() {
   chrome.runtime.openOptionsPage();
+}
+
+function closePopup() {
+  document.body.classList.add('fade-out');
+  setTimeout(() => window.close(), 200);
 }

@@ -55,6 +55,16 @@
   min-width: 120px;
 }
 
+@media (prefers-color-scheme: light) {
+  .page-translator-overlay {
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+  }
+  .page-translator-overlay-bar {
+    background: #ccc;
+  }
+}
+
 .page-translator-overlay-bar {
   width: 100%;
   height: 4px;
