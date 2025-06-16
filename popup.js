@@ -1,7 +1,6 @@
 // Popup script for Page Translator extension
 
 let isTranslating = false;
-let progressListener = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   await loadSettings();
@@ -99,22 +98,6 @@ async function handleTranslate() {
   isTranslating = true;
   translateBtn.textContent = 'Translating...';
   translateBtn.disabled = true;
-
-  const progressWrapper = document.getElementById('progressWrapper');
-  const progressBar = document.getElementById('progressBar');
-  const tokenUsage = document.getElementById('tokenUsage');
-  progressBar.style.width = '0%';
-  tokenUsage.textContent = '';
-  progressWrapper.style.display = 'block';
-
-  progressListener = (message) => {
-    if (message.action === 'translationProgress') {
-      const percent = Math.round((message.completed / message.total) * 100);
-      progressBar.style.width = percent + '%';
-      tokenUsage.textContent = `Tokens used: ${message.tokens}`;
-    }
-  };
-  chrome.runtime.onMessage.addListener(progressListener);
   
   try {
     // Get current tab
@@ -146,19 +129,13 @@ async function handleTranslate() {
     }
 
     // Send message to content script to start translation
-    const response = await chrome.tabs.sendMessage(tab.id, {
+    await chrome.tabs.sendMessage(tab.id, {
       action: 'translatePage',
       targetLanguage: targetLanguage,
       llmService: llmService
     });
-    
-    if (response && response.success) {
-      showStatus('Translation completed successfully!', 'success');
-      document.getElementById('tokenUsage').textContent = `Tokens used: ${response.tokens || 0}`;
-      document.getElementById('progressBar').style.width = '100%';
-    } else {
-      showStatus(response?.error || 'Translation failed', 'error');
-    }
+
+    window.close();
   } catch (error) {
     console.error('Translation error:', error);
     showStatus('Translation failed. Please try again.', 'error');
@@ -166,14 +143,6 @@ async function handleTranslate() {
     isTranslating = false;
     translateBtn.textContent = 'Translate Page';
     translateBtn.disabled = false;
-
-    if (progressListener) {
-      chrome.runtime.onMessage.removeListener(progressListener);
-      progressListener = null;
-    }
-    setTimeout(() => {
-      document.getElementById('progressWrapper').style.display = 'none';
-    }, 3000);
   }
 }
 
