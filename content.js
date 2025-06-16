@@ -61,6 +61,57 @@ class PageTranslator {
     }
   }
 
+  async translateSelection(targetLanguage, llmService) {
+    if (this.translationInProgress) {
+      return { success: false, error: 'Translation already in progress' };
+    }
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selection.toString().trim()) {
+      return { success: false, error: 'No text selected' };
+    }
+
+    const range = selection.getRangeAt(0);
+    const textNodes = this.findTextNodesInRange(range);
+
+    if (textNodes.length === 0) {
+      return { success: false, error: 'No text found in selection' };
+    }
+
+    this.translationInProgress = true;
+
+    try {
+      const { showOriginalOnHover, parallelRequests, showTranslationIndicator } = await chrome.storage.sync.get([
+        'showOriginalOnHover',
+        'parallelRequests',
+        'showTranslationIndicator'
+      ]);
+      this.showOriginalOnHover = typeof showOriginalOnHover === 'undefined' ? true : !!showOriginalOnHover;
+      this.showTranslationIndicator = typeof showTranslationIndicator === 'undefined' ? true : !!showTranslationIndicator;
+      const pr = parseInt(parallelRequests, 10);
+      this.maxParallel = pr >= 1 && pr <= 100 ? pr : 3;
+
+      const textGroups = this.groupTextNodes(textNodes);
+
+      this.totalGroups = textGroups.length;
+      this.groupsCompleted = 0;
+      this.tokenUsage = 0;
+      this.reportProgress();
+
+      await this.processGroups(textGroups, targetLanguage, llmService);
+
+      this.isTranslated = true;
+      this.reportProgress();
+      return { success: true, tokens: this.tokenUsage };
+
+    } catch (error) {
+      console.error('Selection translation error:', error);
+      return { success: false, error: error.message };
+    } finally {
+      this.translationInProgress = false;
+    }
+  }
+
   findTextNodes(element) {
     const textNodes = [];
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -86,6 +137,54 @@ class PageTranslator {
           const txt = c.textContent.trim();
           if (txt.length >= 2) {
             textNodes.push(c);
+          }
+        }
+        continue;
+      }
+
+      const style = window.getComputedStyle(parent);
+      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+        continue;
+      }
+
+      const text = n.textContent.trim();
+      if (text.length < 2) {
+        continue;
+      }
+
+      textNodes.push(n);
+    }
+
+    return textNodes;
+  }
+
+  findTextNodesInRange(range) {
+    const textNodes = [];
+    const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    let node;
+    while (node = walker.nextNode()) {
+      nodes.push(node);
+    }
+
+    for (const n of nodes) {
+      if (!range.intersectsNode(n)) continue;
+      const parent = n.parentElement;
+      if (!parent) continue;
+
+      const tagName = parent.tagName.toLowerCase();
+      if (['script', 'style', 'noscript', 'iframe', 'object'].includes(tagName)) {
+        continue;
+      }
+
+      if (parent.closest('code, pre')) {
+        const comments = this.extractCommentNodes(n);
+        for (const c of comments) {
+          if (range.intersectsNode(c)) {
+            const txt = c.textContent.trim();
+            if (txt.length >= 2) {
+              textNodes.push(c);
+            }
           }
         }
         continue;
@@ -318,7 +417,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Indicates async response
   }
-  
+
+  if (request.action === 'translateSelection') {
+    pageTranslator.translateSelection(request.targetLanguage, request.llmService)
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (request.action === 'revertTranslation') {
     const result = pageTranslator.revertTranslation();
     sendResponse(result);

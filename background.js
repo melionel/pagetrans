@@ -3,6 +3,48 @@
 // Store translation cache to avoid re-translating same content
 const translationCache = new Map();
 
+// Create context menu for translating selected text
+chrome.runtime.onInstalled.addListener(createContextMenu);
+chrome.runtime.onStartup.addListener(createContextMenu);
+
+function createContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'translate-selection',
+      title: 'Translate Selection',
+      contexts: ['selection']
+    });
+  });
+}
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === 'translate-selection' && tab?.id) {
+    const { targetLanguage, llmService } = await chrome.storage.sync.get([
+      'targetLanguage',
+      'llmService'
+    ]);
+
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      });
+      await chrome.scripting.insertCSS({
+        target: { tabId: tab.id },
+        files: ['content.css']
+      });
+    } catch (e) {
+      // ignore injection errors
+    }
+
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'translateSelection',
+      targetLanguage: targetLanguage || 'en',
+      llmService: llmService || 'openai'
+    });
+  }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'translate') {
     handleTranslation(request, sendResponse);
