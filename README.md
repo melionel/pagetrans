@@ -10,6 +10,7 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 - **Language Detection**: Supports 12+ languages including Spanish, French, German, Japanese, Chinese, etc.
 - **Translation Cache**: Avoids re-translating the same content
 - **Easy Revert**: One-click to restore original text
+- **Selection Translation**: Right-click highlighted text to translate just the selection
 - **Hover Reveal**: View the original text when hovering over a translation (can be disabled in settings)
 - **Translation Indicator**: Shows a globe icon next to translated text (can be disabled)
 - **Parallel Translation**: Processes multiple batches simultaneously for faster results (configurable)
@@ -60,9 +61,10 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 5. **Click** "Translate Page" to start translation
 6. **Wait** for the translation to complete (progress bar and token usage shown in popup)
 7. **Click** "Revert" to restore original text
-8. **Optional**: Disable "Show original text on hover" in settings if you don't want to see the source text when hovering
-9. **Optional**: Disable "Show translation indicator" in settings if you don't want the globe icon next to translated text
-10. **Optional**: Adjust the "Parallel Requests" value in settings for faster or slower translations
+8. **Highlight** text and right-click "Translate Selection" to translate just the selected content
+9. **Optional**: Disable "Show original text on hover" in settings if you don't want to see the source text when hovering
+10. **Optional**: Disable "Show translation indicator" in settings if you don't want the globe icon next to translated text
+11. **Optional**: Adjust the "Parallel Requests" value in settings for faster or slower translations
 
 ## How It Works
 
