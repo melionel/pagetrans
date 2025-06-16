@@ -8,6 +8,7 @@ class PageTranslator {
     this.isTranslated = false;
     this.translationInProgress = false;
     this.showOriginalOnHover = false;
+    this.showTranslationIndicator = true;
     this.maxParallel = 3;
     this.totalGroups = 0;
     this.groupsCompleted = 0;
@@ -25,8 +26,9 @@ class PageTranslator {
     this.translationInProgress = true;
 
     try {
-      const { showOriginalOnHover, parallelRequests } = await chrome.storage.sync.get(['showOriginalOnHover', 'parallelRequests']);
+      const { showOriginalOnHover, parallelRequests, showTranslationIndicator } = await chrome.storage.sync.get(['showOriginalOnHover', 'parallelRequests', 'showTranslationIndicator']);
       this.showOriginalOnHover = typeof showOriginalOnHover === 'undefined' ? true : !!showOriginalOnHover;
+      this.showTranslationIndicator = typeof showTranslationIndicator === 'undefined' ? true : !!showTranslationIndicator;
       const pr = parseInt(parallelRequests, 10);
       this.maxParallel = pr >= 1 && pr <= 100 ? pr : 3;
 
@@ -222,7 +224,9 @@ class PageTranslator {
     textNode.textContent = translatedText;
     
     // Add a subtle indicator that this text was translated
-    parent.setAttribute('data-translated', 'true');
+    if (this.showTranslationIndicator) {
+      parent.setAttribute('data-translated', 'true');
+    }
 
     if (this.showOriginalOnHover) {
       if (!this.parentMap.has(parent)) {

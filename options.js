@@ -23,7 +23,8 @@ async function loadSettings() {
     'targetLanguage',
     'llmService',
     'showOriginalOnHover',
-    'parallelRequests'
+    'parallelRequests',
+    'showTranslationIndicator'
   ]);
   
   // Load OpenAI settings
@@ -87,6 +88,11 @@ async function loadSettings() {
   } else {
     document.getElementById('hoverOriginal').checked = !!settings.showOriginalOnHover;
   }
+  if (typeof settings.showTranslationIndicator === 'undefined') {
+    document.getElementById('showIndicator').checked = true;
+  } else {
+    document.getElementById('showIndicator').checked = !!settings.showTranslationIndicator;
+  }
   if (typeof settings.parallelRequests === 'undefined') {
     document.getElementById('parallelRequests').value = '3';
   } else {
@@ -142,6 +148,7 @@ async function saveSettings() {
     targetLanguage: document.getElementById('defaultLanguage').value,
     llmService: document.getElementById('defaultLlm').value,
     showOriginalOnHover: document.getElementById('hoverOriginal').checked,
+    showTranslationIndicator: document.getElementById('showIndicator').checked,
     parallelRequests: parseInt(document.getElementById('parallelRequests').value, 10) || 3
   };
   
@@ -193,6 +200,7 @@ function resetSettings() {
     document.getElementById('defaultLanguage').value = 'es';
     document.getElementById('defaultLlm').value = 'openai';
     document.getElementById('hoverOriginal').checked = true;
+    document.getElementById('showIndicator').checked = true;
     document.getElementById('parallelRequests').value = '3';
 
     // Clear storage
