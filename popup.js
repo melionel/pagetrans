@@ -129,11 +129,11 @@ async function handleTranslate() {
     }
 
     // Send message to content script to start translation
-    await chrome.tabs.sendMessage(tab.id, {
+    chrome.tabs.sendMessage(tab.id, {
       action: 'translatePage',
       targetLanguage: targetLanguage,
       llmService: llmService
-    });
+    }).catch(err => console.error('Translate start error:', err));
 
     closePopup();
   } catch (error) {
