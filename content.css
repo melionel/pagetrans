@@ -36,3 +36,63 @@
   width: 0%;
   transition: width 0.3s ease;
 }
+
+.page-translator-overlay {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 120px;
+}
+
+@media (prefers-color-scheme: light) {
+  .page-translator-overlay {
+    background: rgba(255, 255, 255, 0.9);
+    color: #000;
+  }
+  .page-translator-overlay-bar {
+    background: #ccc;
+  }
+}
+
+.page-translator-overlay-bar {
+  width: 100%;
+  height: 4px;
+  background: #666;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.page-translator-token {
+  text-align: center;
+}
+
+.page-translator-btns {
+  display: flex;
+  gap: 4px;
+}
+
+.page-translator-btns button {
+  flex: 1;
+  border: none;
+  background: #4285f4;
+  color: #fff;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.page-translator-btns button:hover {
+  background: #3367d6;
+}

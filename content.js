@@ -7,6 +7,12 @@ class PageTranslator {
     this.parentMap = new Map();
     this.isTranslated = false;
     this.translationInProgress = false;
+    this.paused = false;
+    this.stopRequested = false;
+    this.overlay = null;
+    this.overlayBar = null;
+    this.overlayToken = null;
+    this.pauseBtn = null;
     this.showOriginalOnHover = false;
     this.showTranslationIndicator = true;
     this.maxParallel = 3;
@@ -24,6 +30,9 @@ class PageTranslator {
     }
 
     this.translationInProgress = true;
+    this.stopRequested = false;
+    this.paused = false;
+    this.createOverlay();
 
     try {
       const { showOriginalOnHover, parallelRequests, showTranslationIndicator } = await chrome.storage.sync.get(['showOriginalOnHover', 'parallelRequests', 'showTranslationIndicator']);
@@ -58,6 +67,7 @@ class PageTranslator {
       return { success: false, error: error.message };
     } finally {
       this.translationInProgress = false;
+      this.removeOverlay();
     }
   }
 
@@ -79,6 +89,9 @@ class PageTranslator {
     }
 
     this.translationInProgress = true;
+    this.stopRequested = false;
+    this.paused = false;
+    this.createOverlay();
 
     try {
       const { showOriginalOnHover, parallelRequests, showTranslationIndicator } = await chrome.storage.sync.get([
@@ -109,6 +122,7 @@ class PageTranslator {
       return { success: false, error: error.message };
     } finally {
       this.translationInProgress = false;
+      this.removeOverlay();
     }
   }
 
@@ -250,6 +264,8 @@ class PageTranslator {
 
     const work = async () => {
       while (true) {
+        if (this.stopRequested) break;
+        await this.waitWhilePaused();
         let currentIndex;
         if (index >= groups.length) break;
         currentIndex = index++;
@@ -259,6 +275,7 @@ class PageTranslator {
           this.groupsCompleted++;
           this.tokenUsage += tokens;
           this.reportProgress();
+          this.updateOverlay();
         } catch (error) {
           console.error('Translation error for group:', error);
         }
@@ -396,6 +413,70 @@ class PageTranslator {
     }
   }
 
+  createOverlay() {
+    if (this.overlay) return;
+    this.overlay = document.createElement('div');
+    this.overlay.className = 'page-translator-overlay';
+    this.overlay.innerHTML = `
+      <div class="page-translator-overlay-bar">
+        <div class="page-translator-progress-bar"></div>
+      </div>
+      <div class="page-translator-token">Tokens: 0</div>
+      <div class="page-translator-btns">
+        <button class="page-translator-pause">Pause</button>
+        <button class="page-translator-stop">Stop</button>
+      </div>`;
+    document.body.appendChild(this.overlay);
+    this.overlayBar = this.overlay.querySelector('.page-translator-progress-bar');
+    this.overlayToken = this.overlay.querySelector('.page-translator-token');
+    this.pauseBtn = this.overlay.querySelector('.page-translator-pause');
+    const stopBtn = this.overlay.querySelector('.page-translator-stop');
+    this.pauseBtn.addEventListener('click', () => {
+      if (this.paused) {
+        this.resumeTranslation();
+        this.pauseBtn.textContent = 'Pause';
+      } else {
+        this.pauseTranslation();
+        this.pauseBtn.textContent = 'Resume';
+      }
+    });
+    stopBtn.addEventListener('click', () => {
+      this.stopTranslation();
+    });
+  }
+
+  updateOverlay() {
+    if (!this.overlayBar || !this.overlayToken) return;
+    const percent = this.totalGroups ? Math.round((this.groupsCompleted / this.totalGroups) * 100) : 0;
+    this.overlayBar.style.width = percent + '%';
+    this.overlayToken.textContent = `Tokens: ${this.tokenUsage}`;
+  }
+
+  removeOverlay() {
+    if (this.overlay) {
+      this.overlay.remove();
+      this.overlay = null;
+    }
+  }
+
+  pauseTranslation() {
+    this.paused = true;
+  }
+
+  resumeTranslation() {
+    this.paused = false;
+  }
+
+  stopTranslation() {
+    this.stopRequested = true;
+  }
+
+  async waitWhilePaused() {
+    while (this.paused && !this.stopRequested) {
+      await new Promise(r => setTimeout(r, 200));
+    }
+  }
+
   reportProgress() {
     chrome.runtime.sendMessage({
       action: 'translationProgress',
@@ -403,6 +484,7 @@ class PageTranslator {
       total: this.totalGroups,
       tokens: this.tokenUsage
     });
+    this.updateOverlay();
   }
 }
 
@@ -428,6 +510,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'revertTranslation') {
     const result = pageTranslator.revertTranslation();
     sendResponse(result);
+  }
+
+  if (request.action === 'pauseTranslation') {
+    pageTranslator.pauseTranslation();
+    sendResponse({ success: true });
+  }
+
+  if (request.action === 'resumeTranslation') {
+    pageTranslator.resumeTranslation();
+    sendResponse({ success: true });
+  }
+
+  if (request.action === 'stopTranslation') {
+    pageTranslator.stopTranslation();
+    sendResponse({ success: true });
   }
 });
 
