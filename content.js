@@ -622,11 +622,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }));
 
-      if (!doc.querySelector('base')) {
-        const base = document.createElement('base');
-        base.href = location.href;
+      const existingBase = doc.querySelector('base');
+      if (existingBase) {
+        existingBase.href = './';
+      } else {
+        const baseEl = document.createElement('base');
+        baseEl.href = './';
         const head = doc.querySelector('head');
-        if (head) head.prepend(base);
+        if (head) head.prepend(baseEl);
       }
 
       const html = '<!DOCTYPE html>\n' + doc.outerHTML;
