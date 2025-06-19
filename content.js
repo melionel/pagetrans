@@ -573,8 +573,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'getPageHTML') {
-    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
-    sendResponse({ html });
+    (async () => {
+      const doc = document.documentElement.cloneNode(true);
+      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
+      await Promise.all(links.map(async (link) => {
+        try {
+          const res = await fetch(link.href);
+          const css = await res.text();
+          const style = document.createElement('style');
+          style.setAttribute('data-href', link.href);
+          style.textContent = css;
+          link.replaceWith(style);
+        } catch (e) {
+          console.error('Failed to inline stylesheet', link.href, e);
+        }
+      }));
+
+      if (!doc.querySelector('base')) {
+        const base = document.createElement('base');
+        base.href = location.href;
+        const head = doc.querySelector('head');
+        if (head) head.prepend(base);
+      }
+
+      const html = '<!DOCTYPE html>\n' + doc.outerHTML;
+      sendResponse({ html });
+    })().catch(e => {
+      console.error('getPageHTML error', e);
+      sendResponse({ html: null, error: e.message });
+    });
+    return true;
   }
 });
 
