@@ -24,26 +24,48 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       'llmService'
     ]);
 
+    const frameId = info.frameId ?? 0;
+
     try {
       await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
+        target: { tabId: tab.id, frameIds: [frameId] },
         files: ['content.js']
       });
       await chrome.scripting.insertCSS({
-        target: { tabId: tab.id },
+        target: { tabId: tab.id, frameIds: [frameId] },
         files: ['content.css']
       });
     } catch (e) {
       // ignore injection errors
     }
 
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'translateSelection',
-      targetLanguage: targetLanguage || 'en',
-      llmService: llmService || 'openai'
-    });
+    chrome.tabs.sendMessage(
+      tab.id,
+      {
+        action: 'translateSelection',
+        targetLanguage: targetLanguage || 'en',
+        llmService: llmService || 'openai'
+      },
+      { frameId },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          showNotification('Translation failed: ' + chrome.runtime.lastError.message);
+        } else if (!response?.success) {
+          showNotification('Translation failed: ' + (response?.error || 'Unknown error'));
+        }
+      }
+    );
   }
 });
+
+function showNotification(message) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: 'Page Translator',
+    message
+  });
+}
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'translate') {

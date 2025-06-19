@@ -20,6 +20,15 @@ class PageTranslator {
     this.groupsCompleted = 0;
     this.tokenUsage = 0;
 
+    this.lastSelectionRange = null;
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && sel.toString().trim()) {
+        this.lastSelectionRange = sel.getRangeAt(0).cloneRange();
+      }
+    });
+
     this.handleMouseEnter = this.handleMouseEnter.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
   }
@@ -28,6 +37,9 @@ class PageTranslator {
     if (this.translationInProgress) {
       return { success: false, error: 'Translation already in progress' };
     }
+
+    // Remove any existing overlay from a previous translation
+    this.removeOverlay();
 
     this.translationInProgress = true;
     this.stopRequested = false;
@@ -41,8 +53,12 @@ class PageTranslator {
       const pr = parseInt(parallelRequests, 10);
       this.maxParallel = pr >= 1 && pr <= 100 ? pr : 3;
 
-      // Find all text nodes
+      // Find all text nodes including page title
       const textNodes = this.findTextNodes(document.body);
+      const titleEl = document.querySelector('head title');
+      if (titleEl && titleEl.firstChild && titleEl.textContent.trim()) {
+        textNodes.push(titleEl.firstChild);
+      }
       
       if (textNodes.length === 0) {
         return { success: false, error: 'No text found to translate' };
@@ -67,7 +83,7 @@ class PageTranslator {
       return { success: false, error: error.message };
     } finally {
       this.translationInProgress = false;
-      this.removeOverlay();
+      this.removeOverlay(5000);
     }
   }
 
@@ -76,12 +92,20 @@ class PageTranslator {
       return { success: false, error: 'Translation already in progress' };
     }
 
+    // Remove any existing overlay from a previous translation
+    this.removeOverlay();
+
+    let range;
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || !selection.toString().trim()) {
+    if (selection && selection.rangeCount > 0 && selection.toString().trim()) {
+      range = selection.getRangeAt(0).cloneRange();
+      this.lastSelectionRange = range.cloneRange();
+    } else if (this.lastSelectionRange && this.lastSelectionRange.toString().trim()) {
+      range = this.lastSelectionRange.cloneRange();
+    } else {
       return { success: false, error: 'No text selected' };
     }
 
-    const range = selection.getRangeAt(0);
     const textNodes = this.findTextNodesInRange(range);
 
     if (textNodes.length === 0) {
@@ -122,7 +146,7 @@ class PageTranslator {
       return { success: false, error: error.message };
     } finally {
       this.translationInProgress = false;
-      this.removeOverlay();
+      this.removeOverlay(5000);
     }
   }
 
@@ -162,7 +186,7 @@ class PageTranslator {
       }
 
       const text = n.textContent.trim();
-      if (text.length < 2) {
+      if (text.length < 1) {
         continue;
       }
 
@@ -174,8 +198,17 @@ class PageTranslator {
 
   findTextNodesInRange(range) {
     const textNodes = [];
-    const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT);
+    const root = range.commonAncestorContainer;
+    const walker = document.createTreeWalker(
+      root.nodeType === Node.TEXT_NODE ? root.parentNode : root,
+      NodeFilter.SHOW_TEXT
+    );
     const nodes = [];
+
+    if (root.nodeType === Node.TEXT_NODE) {
+      nodes.push(root);
+    }
+
     let node;
     while (node = walker.nextNode()) {
       nodes.push(node);
@@ -210,7 +243,7 @@ class PageTranslator {
       }
 
       const text = n.textContent.trim();
-      if (text.length < 2) {
+      if (text.length < 1) {
         continue;
       }
 
@@ -452,10 +485,22 @@ class PageTranslator {
     this.overlayToken.textContent = `Tokens: ${this.tokenUsage}`;
   }
 
-  removeOverlay() {
+  removeOverlay(delay = 0) {
     if (this.overlay) {
-      this.overlay.remove();
-      this.overlay = null;
+      if (delay > 0) {
+        const overlay = this.overlay;
+        setTimeout(() => {
+          if (overlay === this.overlay) {
+            overlay.remove();
+            if (overlay === this.overlay) {
+              this.overlay = null;
+            }
+          }
+        }, delay);
+      } else {
+        this.overlay.remove();
+        this.overlay = null;
+      }
     }
   }
 
