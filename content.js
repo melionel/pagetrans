@@ -176,7 +176,7 @@ class PageTranslator {
       }
 
       const text = n.textContent.trim();
-      if (text.length < 2) {
+      if (text.length < 1) {
         continue;
       }
 
@@ -188,8 +188,17 @@ class PageTranslator {
 
   findTextNodesInRange(range) {
     const textNodes = [];
-    const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT);
+    const root = range.commonAncestorContainer;
+    const walker = document.createTreeWalker(
+      root.nodeType === Node.TEXT_NODE ? root.parentNode : root,
+      NodeFilter.SHOW_TEXT
+    );
     const nodes = [];
+
+    if (root.nodeType === Node.TEXT_NODE) {
+      nodes.push(root);
+    }
+
     let node;
     while (node = walker.nextNode()) {
       nodes.push(node);
@@ -224,7 +233,7 @@ class PageTranslator {
       }
 
       const text = n.textContent.trim();
-      if (text.length < 2) {
+      if (text.length < 1) {
         continue;
       }
 
