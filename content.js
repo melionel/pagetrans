@@ -20,6 +20,15 @@ class PageTranslator {
     this.groupsCompleted = 0;
     this.tokenUsage = 0;
 
+    this.lastSelectionRange = null;
+
+    document.addEventListener('selectionchange', () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0 && sel.toString().trim()) {
+        this.lastSelectionRange = sel.getRangeAt(0).cloneRange();
+      }
+    });
+
     this.handleMouseEnter = this.handleMouseEnter.bind(this);
     this.handleMouseLeave = this.handleMouseLeave.bind(this);
   }
@@ -76,12 +85,17 @@ class PageTranslator {
       return { success: false, error: 'Translation already in progress' };
     }
 
+    let range;
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0 || !selection.toString().trim()) {
+    if (selection && selection.rangeCount > 0 && selection.toString().trim()) {
+      range = selection.getRangeAt(0).cloneRange();
+      this.lastSelectionRange = range.cloneRange();
+    } else if (this.lastSelectionRange && this.lastSelectionRange.toString().trim()) {
+      range = this.lastSelectionRange.cloneRange();
+    } else {
       return { success: false, error: 'No text selected' };
     }
 
-    const range = selection.getRangeAt(0);
     const textNodes = this.findTextNodesInRange(range);
 
     if (textNodes.length === 0) {
