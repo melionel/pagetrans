@@ -21,7 +21,7 @@
   "scripts": {
     "build": "echo 'No build step required - extension files are ready to use'",
     "package": "node scripts/package.js",
-    "lint": "eslint *.js",
+    "lint": "eslint *.js --ignore-pattern eslint.config.js",
     "test": "echo 'No tests configured yet'"
   },
   "devDependencies": {

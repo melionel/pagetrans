@@ -177,12 +177,14 @@ async function handleSavePage() {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
 
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageHTML' });
+    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageData' });
     if (response && response.html) {
-      const blob = new Blob([response.html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const filename = `translated_page_${Date.now()}.html`;
-      await chrome.downloads.download({ url, filename, saveAs: true });
+      const baseDir = `translated_page_${Date.now()}`;
+      await downloadFile(response.html, `${baseDir}/index.html`, 'text/html', true);
+      for (const asset of response.assets || []) {
+        const bytes = base64ToUint8Array(asset.data);
+        await downloadFile(bytes, `${baseDir}/${asset.filename}`, asset.type, false);
+      }
       showStatus('Page saved to Downloads', 'success');
     } else {
       showStatus('Failed to retrieve page', 'error');
@@ -191,6 +193,23 @@ async function handleSavePage() {
     console.error('Save page error:', error);
     showStatus('Failed to save page', 'error');
   }
+}
+
+function base64ToUint8Array(base64) {
+  const binary = atob(base64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function downloadFile(data, filename, type, saveAs) {
+  const blob = data instanceof Uint8Array ? new Blob([data], { type }) : new Blob([data], { type });
+  const url = URL.createObjectURL(blob);
+  await chrome.downloads.download({ url, filename, saveAs });
+  URL.revokeObjectURL(url);
 }
 
 function showStatus(message, type) {

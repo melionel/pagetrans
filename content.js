@@ -572,20 +572,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     sendResponse({ success: true });
   }
 
-  if (request.action === 'getPageHTML') {
+  if (request.action === 'getPageData') {
     (async () => {
+      const assets = [];
       const doc = document.documentElement.cloneNode(true);
-      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"]'));
+
+      const arrayBufferToBase64 = (buffer) => {
+        let binary = '';
+        const bytes = new Uint8Array(buffer);
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      };
+
+      let styleIndex = 0;
+      const links = Array.from(doc.querySelectorAll('link[rel="stylesheet"][href]'));
       await Promise.all(links.map(async (link) => {
         try {
           const res = await fetch(link.href);
           const css = await res.text();
-          const style = document.createElement('style');
-          style.setAttribute('data-href', link.href);
-          style.textContent = css;
-          link.replaceWith(style);
+          const filename = `assets/style${styleIndex++}.css`;
+          assets.push({ filename, data: css, type: 'text/css' });
+          link.href = filename;
         } catch (e) {
-          console.error('Failed to inline stylesheet', link.href, e);
+          console.error('Failed to fetch style', link.href, e);
+        }
+      }));
+
+      let imgIndex = 0;
+      const imgs = Array.from(doc.querySelectorAll('img[src]'));
+      await Promise.all(imgs.map(async (img) => {
+        const src = img.src;
+        if (src.startsWith('data:')) return;
+        try {
+          const res = await fetch(src);
+          const buffer = await res.arrayBuffer();
+          const base64 = arrayBufferToBase64(buffer);
+          const contentType = res.headers.get('content-type') || 'application/octet-stream';
+          const extMatch = src.split('.').pop().split(/#|\?/)[0];
+          const ext = extMatch && extMatch.length < 6 ? `.${extMatch}` : '';
+          const filename = `assets/img${imgIndex++}${ext}`;
+          assets.push({ filename, data: base64, type: contentType });
+          img.src = filename;
+        } catch (e) {
+          console.error('Failed to fetch image', src, e);
         }
       }));
 
@@ -597,10 +628,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
 
       const html = '<!DOCTYPE html>\n' + doc.outerHTML;
-      sendResponse({ html });
+      sendResponse({ html, assets });
     })().catch(e => {
-      console.error('getPageHTML error', e);
-      sendResponse({ html: null, error: e.message });
+      console.error('getPageData error', e);
+      sendResponse({ html: null, assets: [], error: e.message });
     });
     return true;
   }
