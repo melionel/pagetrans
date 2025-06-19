@@ -53,8 +53,12 @@ class PageTranslator {
       const pr = parseInt(parallelRequests, 10);
       this.maxParallel = pr >= 1 && pr <= 100 ? pr : 3;
 
-      // Find all text nodes
+      // Find all text nodes including page title
       const textNodes = this.findTextNodes(document.body);
+      const titleEl = document.querySelector('head title');
+      if (titleEl && titleEl.firstChild && titleEl.textContent.trim()) {
+        textNodes.push(titleEl.firstChild);
+      }
       
       if (textNodes.length === 0) {
         return { success: false, error: 'No text found to translate' };

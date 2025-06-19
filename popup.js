@@ -128,12 +128,15 @@ async function handleTranslate() {
       // Ignore errors (script may already be injected)
     }
 
-    // Send message to content script to start translation
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'translatePage',
-      targetLanguage: targetLanguage,
-      llmService: llmService
-    }).catch(err => console.error('Translate start error:', err));
+    // Send message to all frames to start translation
+    const frames = await chrome.webNavigation.getAllFrames({ tabId: tab.id });
+    for (const frame of frames) {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'translatePage',
+        targetLanguage,
+        llmService
+      }, { frameId: frame.frameId }).catch(err => console.error('Translate start error:', err));
+    }
 
     closePopup();
   } catch (error) {
