@@ -15,6 +15,7 @@ A Chrome/Edge browser extension that translates web pages using configurable LLM
 - **Translation Indicator**: Shows a globe icon next to translated text (can be disabled)
 - **Parallel Translation**: Processes multiple batches simultaneously for faster results (configurable)
 - **Progress Feedback**: Popup displays a progress bar and token usage while translating
+- **Save Translated Page**: Download the translated result as a static HTML file for easy sharing
 
 ## Installation
 

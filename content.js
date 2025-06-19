@@ -571,6 +571,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     pageTranslator.stopTranslation();
     sendResponse({ success: true });
   }
+
+  if (request.action === 'getPageHTML') {
+    const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    sendResponse({ html });
+  }
 });
 
 // Add visual indicator for translated elements

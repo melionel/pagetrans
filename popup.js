@@ -26,6 +26,10 @@ async function loadSettings() {
 function setupEventListeners() {
   document.getElementById('translateBtn').addEventListener('click', handleTranslate);
   document.getElementById('revertBtn').addEventListener('click', handleRevert);
+  const saveBtn = document.getElementById('saveBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', handleSavePage);
+  }
   document.getElementById('settingsLink').addEventListener('click', openSettings);
   
   // Save settings on change
@@ -165,6 +169,27 @@ async function handleRevert() {
   } catch (error) {
     console.error('Revert error:', error);
     showStatus('Failed to revert page', 'error');
+  }
+}
+
+async function handleSavePage() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) return;
+
+    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageHTML' });
+    if (response && response.html) {
+      const blob = new Blob([response.html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const filename = `translated_page_${Date.now()}.html`;
+      await chrome.downloads.download({ url, filename, saveAs: true });
+      showStatus('Page saved to Downloads', 'success');
+    } else {
+      showStatus('Failed to retrieve page', 'error');
+    }
+  } catch (error) {
+    console.error('Save page error:', error);
+    showStatus('Failed to save page', 'error');
   }
 }
 
