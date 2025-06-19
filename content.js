@@ -592,8 +592,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         try {
           const res = await fetch(link.href);
           const css = await res.text();
+          const buffer = new TextEncoder().encode(css);
+          const base64 = arrayBufferToBase64(buffer);
           const filename = `assets/style${styleIndex++}.css`;
-          assets.push({ filename, data: css, type: 'text/css' });
+          assets.push({ filename, data: base64, type: 'text/css' });
           link.href = filename;
         } catch (e) {
           console.error('Failed to fetch style', link.href, e);

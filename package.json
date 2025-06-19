@@ -7,7 +7,7 @@
     "translation",
     "llm",
     "openai",
-    "anthropic", 
+    "anthropic",
     "google-gemini",
     "chrome-extension",
     "edge-extension"
@@ -25,7 +25,9 @@
     "test": "echo 'No tests configured yet'"
   },
   "devDependencies": {
-    "eslint": "^8.0.0"
+    "@eslint/js": "^9.29.0",
+    "eslint": "^8.0.0",
+    "globals": "^16.2.0"
   },
   "engines": {
     "node": ">=14.0.0"
