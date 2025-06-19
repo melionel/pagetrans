@@ -372,17 +372,18 @@ function parseTranslationResponse(translatedText, expectedCount) {
 
 function getLanguageName(languageCode) {
   const languages = {
-    'es': 'Spanish',
-    'fr': 'French', 
-    'de': 'German',
-    'it': 'Italian',
-    'pt': 'Portuguese',
-    'ru': 'Russian',
-    'ja': 'Japanese',
-    'ko': 'Korean',
-    'zh': 'Chinese',
-    'ar': 'Arabic',
-    'hi': 'Hindi',
+    'es': 'Español',
+    'fr': 'Français',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'pt': 'Português',
+    'ru': 'Русский',
+    'ja': '日本語',
+    'ko': '한국어',
+    'zh': '简体中文',
+    'zh-TW': '繁體中文',
+    'ar': 'العربية',
+    'hi': 'हिन्दी',
     'en': 'English'
   };
   
