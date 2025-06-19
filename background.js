@@ -24,13 +24,15 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       'llmService'
     ]);
 
+    const frameId = info.frameId ?? 0;
+
     try {
       await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
+        target: { tabId: tab.id, frameIds: [frameId] },
         files: ['content.js']
       });
       await chrome.scripting.insertCSS({
-        target: { tabId: tab.id },
+        target: { tabId: tab.id, frameIds: [frameId] },
         files: ['content.css']
       });
     } catch (e) {
@@ -44,6 +46,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
         targetLanguage: targetLanguage || 'en',
         llmService: llmService || 'openai'
       },
+      { frameId },
       (response) => {
         if (chrome.runtime.lastError) {
           showNotification('Translation failed: ' + chrome.runtime.lastError.message);
