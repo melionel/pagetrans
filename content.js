@@ -38,6 +38,9 @@ class PageTranslator {
       return { success: false, error: 'Translation already in progress' };
     }
 
+    // Remove any existing overlay from a previous translation
+    this.removeOverlay();
+
     this.translationInProgress = true;
     this.stopRequested = false;
     this.paused = false;
@@ -76,7 +79,7 @@ class PageTranslator {
       return { success: false, error: error.message };
     } finally {
       this.translationInProgress = false;
-      this.removeOverlay();
+      this.removeOverlay(5000);
     }
   }
 
@@ -84,6 +87,9 @@ class PageTranslator {
     if (this.translationInProgress) {
       return { success: false, error: 'Translation already in progress' };
     }
+
+    // Remove any existing overlay from a previous translation
+    this.removeOverlay();
 
     let range;
     const selection = window.getSelection();
@@ -136,7 +142,7 @@ class PageTranslator {
       return { success: false, error: error.message };
     } finally {
       this.translationInProgress = false;
-      this.removeOverlay();
+      this.removeOverlay(5000);
     }
   }
 
@@ -475,10 +481,22 @@ class PageTranslator {
     this.overlayToken.textContent = `Tokens: ${this.tokenUsage}`;
   }
 
-  removeOverlay() {
+  removeOverlay(delay = 0) {
     if (this.overlay) {
-      this.overlay.remove();
-      this.overlay = null;
+      if (delay > 0) {
+        const overlay = this.overlay;
+        setTimeout(() => {
+          if (overlay === this.overlay) {
+            overlay.remove();
+            if (overlay === this.overlay) {
+              this.overlay = null;
+            }
+          }
+        }, delay);
+      } else {
+        this.overlay.remove();
+        this.overlay = null;
+      }
     }
   }
 
