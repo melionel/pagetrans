@@ -37,13 +37,32 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       // ignore injection errors
     }
 
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'translateSelection',
-      targetLanguage: targetLanguage || 'en',
-      llmService: llmService || 'openai'
-    });
+    chrome.tabs.sendMessage(
+      tab.id,
+      {
+        action: 'translateSelection',
+        targetLanguage: targetLanguage || 'en',
+        llmService: llmService || 'openai'
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          showNotification('Translation failed: ' + chrome.runtime.lastError.message);
+        } else if (!response?.success) {
+          showNotification('Translation failed: ' + (response?.error || 'Unknown error'));
+        }
+      }
+    );
   }
 });
+
+function showNotification(message) {
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon48.png',
+    title: 'Page Translator',
+    message
+  });
+}
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'translate') {
